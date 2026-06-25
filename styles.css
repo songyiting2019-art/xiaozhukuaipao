@@ -10,14 +10,14 @@
   --grass-a: #97de59;
   --grass-b: #55bb49;
   --grass-c: #78cf53;
-  --grass-texture: url("./assets/grass-texture.png");
-  --soil-frame: url("./assets/soil-path-gate-12x19-wide.png");
+  --grass-texture: url("./assets/optimized/grass-texture-256.png");
+  --soil-frame: url("./assets/optimized/soil-path-gate-12x19-wide-720.png");
   --farm-house: url("./assets/farm-house-alpha.png");
-  --bush: url("./assets/bush-alpha.png");
-  --tree-top: url("./assets/tree-top-alpha.png");
-  --fence: url("./assets/fence-alpha.png");
-  --flower-rocks: url("./assets/flower-rocks-alpha.png");
-  --button-bg: url("./assets/button-bg.png");
+  --bush: url("./assets/optimized/bush-alpha-256.png");
+  --tree-top: url("./assets/optimized/tree-top-alpha-256.png");
+  --fence: url("./assets/optimized/fence-alpha-360.png");
+  --flower-rocks: url("./assets/optimized/flower-rocks-alpha-256.png");
+  --button-bg: url("./assets/optimized/button-bg-420.png");
   --grass-texture-opacity: 0.1;
   --grid-opacity: 0.15;
   --grid-soft: rgba(247, 255, 220, var(--grid-opacity));
@@ -921,12 +921,15 @@ body.is-starting .tool-row {
 
 /* 小猪视觉 */
 .pig {
+  appearance: none;
+  -webkit-appearance: none;
   position: absolute;
   left: calc(var(--x) * var(--cell));
   top: calc(var(--y) * var(--cell));
   width: calc(var(--cell) * var(--pig-scale-x));
   height: calc(var(--cell) * var(--pig-scale-y));
   border: 0;
+  outline: none;
   padding: 0;
   background: transparent;
   cursor: pointer;
@@ -941,6 +944,8 @@ body.is-starting .tool-row {
     opacity 420ms ease;
   z-index: var(--z);
   touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .pig[aria-label="小猪朝右"],
@@ -983,7 +988,7 @@ body.is-starting .tool-row {
   display: block;
   width: 100%;
   height: 100%;
-  background-image: url("./assets/pig-up.png");
+  background-image: url("./assets/optimized/pig-up-160.png");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
@@ -995,11 +1000,11 @@ body.is-starting .tool-row {
 }
 
 .pig[aria-label="小猪朝上"] .pig-shape {
-  background-image: url("./assets/pig-up.png");
+  background-image: url("./assets/optimized/pig-up-160.png");
 }
 
 .pig[aria-label="小猪朝下"] .pig-shape {
-  background-image: url("./assets/pig-down.png");
+  background-image: url("./assets/optimized/pig-down-160.png");
 }
 
 .pig[aria-label="小猪朝右"] .pig-shape,
@@ -1008,7 +1013,7 @@ body.is-starting .tool-row {
   top: 0;
   width: 100%;
   height: 100%;
-  background-image: url("./assets/pig-side.png");
+  background-image: url("./assets/optimized/pig-side-180.png");
 }
 
 .pig[aria-label="小猪朝左"] .pig-shape {
@@ -1019,10 +1024,15 @@ body.is-starting .tool-row {
   display: none;
 }
 
+.pig:focus,
 .pig:focus-visible {
-  outline: 3px solid #fff8b5;
-  outline-offset: 3px;
-  border-radius: 50%;
+  outline: none;
+}
+
+.pig:focus-visible .pig-shape {
+  filter:
+    drop-shadow(0 0 5px rgba(255, 248, 181, 0.86))
+    drop-shadow(3px 5px 4px rgba(90, 61, 36, 0.13));
 }
 
 .pig-body {
