@@ -5,13 +5,13 @@
   --pig-scale-x: 1.32;
   --pig-scale-y: 2.28;
   --pasture-radius: calc(var(--cell) * 2);
-  --path-width: calc(var(--cell) * 1.5);
-  --path-height: calc(var(--cell) * 2.15);
+  --path-width: calc(var(--cell) * 1.8);
+  --path-height: var(--path-width);
   --grass-a: #97de59;
   --grass-b: #55bb49;
   --grass-c: #78cf53;
   --grass-texture: url("./assets/grass-texture.png");
-  --soil-frame: url("./assets/soil-path-gate-12x19.png");
+  --soil-frame: url("./assets/soil-path-gate-12x19-wide.png");
   --farm-house: url("./assets/farm-house-alpha.png");
   --bush: url("./assets/bush-alpha.png");
   --tree-top: url("./assets/tree-top-alpha.png");
