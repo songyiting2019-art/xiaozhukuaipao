@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小猪出栏 - 关卡后台编辑器</title>
+    <link rel="stylesheet" href="./styles.css?v=game-clean-1" />
+    <link rel="stylesheet" href="./level-editor.css?v=1" />
+  </head>
+  <body class="level-editor-page">
+    <main class="level-editor-shell">
+      <header class="level-editor-header">
+        <div>
+          <p class="level-editor-kicker">后台工具</p>
+          <h1>关卡编辑器</h1>
+        </div>
+        <a class="level-editor-link" href="./index.html">打开玩家页</a>
+      </header>
+
+      <section class="level-editor-topbar" aria-label="编辑器工具栏">
+        <label class="editor-field">
+          <span>关卡</span>
+          <select id="editorLevelSelect" aria-label="选择关卡"></select>
+        </label>
+        <div class="editor-tool-group">
+          <span>朝向</span>
+          <div class="editor-dir-row" id="editorDirRow" aria-label="放置方向">
+            <button class="editor-chip is-selected" type="button" data-dir="up">上</button>
+            <button class="editor-chip" type="button" data-dir="right">右</button>
+            <button class="editor-chip" type="button" data-dir="down">下</button>
+            <button class="editor-chip" type="button" data-dir="left">左</button>
+          </div>
+        </div>
+        <div class="editor-actions" aria-label="编辑操作">
+          <button class="editor-chip" id="editorErase" type="button">删除</button>
+          <button class="editor-chip" id="editorGenerate" type="button">生成</button>
+          <button class="editor-chip" id="editorClear" type="button">清空</button>
+          <button class="editor-chip editor-chip-primary" id="editorCopy" type="button">复制</button>
+        </div>
+      </section>
+
+      <section class="level-editor-main">
+        <div class="editor-board-wrap">
+          <div class="pasture editor-board" id="editorBoard" aria-label="关卡棋盘"></div>
+        </div>
+        <aside class="level-editor-side">
+          <div class="editor-status" id="editorStatus">加载中</div>
+          <label class="editor-output-field">
+            <span>LEVELS 数据</span>
+            <textarea class="editor-output level-editor-output" id="editorOutput" readonly spellcheck="false"></textarea>
+          </label>
+        </aside>
+      </section>
+    </main>
+
+    <script src="./level-editor.js?v=2"></script>
+  </body>
+</html>
