@@ -68,7 +68,7 @@ const STAR_RULES = {
 };
 
 const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV1";
-const DEFAULT_LEVEL_INDEX = 14;
+const DEFAULT_LEVEL_INDEX = 0;
 
 const LEVELS = [
   {
