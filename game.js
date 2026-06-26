@@ -48,12 +48,8 @@ const SCORE_RULES = {
   comboBonusEarly: 30,
   comboBonusMid: 20,
   comboBonusLate: 10,
-  removeScore: 0,
-};
-
-const TOOL_LIMITS = {
-  remove: 1,
-  undo: 2,
+  removeScore: -1000,
+  undoScore: -500,
 };
 
 const STAR_RULES = {
@@ -1446,16 +1442,11 @@ function handleAnimalClick(id, element) {
   playAnimalTapFeedback(element);
 
   if (state.toolMode === "remove") {
-    if (!canUseTool("remove")) {
-      setToolMode(null);
-      showToast("移除道具已用完");
-      return;
-    }
     saveUndoSnapshot();
     state.toolUses.remove += 1;
     removeAnimal(animal, element);
     setToolMode(null);
-    showToast("已移除一只小猪");
+    showToast("已移除，-1000分");
     return;
   }
 
@@ -2202,11 +2193,6 @@ levelSelect.addEventListener("change", () => {
 
 removeTool.addEventListener("click", () => {
   if (state.locked) return;
-  if (!canUseTool("remove")) {
-    setToolMode(null);
-    showToast("移除道具已用完");
-    return;
-  }
   setToolMode(state.toolMode === "remove" ? null : "remove");
   showToast(state.toolMode === "remove" ? "选择一只小猪移除" : "已取消移除");
 });
@@ -2238,13 +2224,13 @@ function setToolMode(mode) {
 function updateToolState() {
   pasture.classList.toggle("is-targeting", Boolean(state.toolMode));
   removeTool.classList.toggle("is-selected", state.toolMode === "remove");
-  removeTool.disabled = state.locked || !canUseTool("remove");
+  removeTool.disabled = state.locked;
   removeTool.setAttribute(
     "aria-pressed",
     state.toolMode === "remove" ? "true" : "false",
   );
   removeTool.querySelector(".tool-count").textContent =
-    `${getToolUsesLeft("remove")}/${TOOL_LIMITS.remove}`;
+    `${SCORE_RULES.removeScore}分`;
   updateUndoState();
 }
 
@@ -2265,7 +2251,7 @@ function saveUndoSnapshot() {
 }
 
 function undoLastAction() {
-  if (state.locked || !state.undoSnapshot || !canUseTool("undo")) {
+  if (state.locked || !state.undoSnapshot) {
     showToast("暂无可撤销操作");
     return;
   }
@@ -2274,7 +2260,7 @@ function undoLastAction() {
   const nextUndoUses = state.toolUses.undo + 1;
   state.cleared = snapshot.cleared;
   state.combo = snapshot.combo;
-  state.score = snapshot.score;
+  state.score = snapshot.score + SCORE_RULES.undoScore;
   state.toolMode = null;
   state.undoSnapshot = null;
   state.toolUses = {
@@ -2295,21 +2281,18 @@ function undoLastAction() {
   render();
   updateHud();
   updateToolState();
-  showToast("已撤销上一步");
+  showToast("已撤销，-500分");
 }
 
 function updateUndoState() {
-  undoTool.disabled = state.locked || !state.undoSnapshot || !canUseTool("undo");
-  undoTool.querySelector(".tool-count").textContent =
-    `${getToolUsesLeft("undo")}/${TOOL_LIMITS.undo}`;
+  undoTool.disabled = state.locked || !state.undoSnapshot;
+  undoTool.querySelector(".tool-count").textContent = `${SCORE_RULES.undoScore}分`;
 }
 
 function canUseTool(tool) {
-  return (state.toolUses[tool] ?? 0) < TOOL_LIMITS[tool];
-}
-
-function getToolUsesLeft(tool) {
-  return Math.max(0, TOOL_LIMITS[tool] - (state.toolUses[tool] ?? 0));
+  if (tool === "remove") return true;
+  if (tool === "undo") return true;
+  return false;
 }
 
 function getCellKey(cell) {
