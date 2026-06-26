@@ -142,7 +142,7 @@ const LEVELS = [
       { x: 8, y: 12, dir: "up" },
       { x: 8, y: 9, dir: "up" },
       { x: 8, y: 4, dir: "up" },
-      { x: 4, y: 13, dir: "right" },
+      { x: 3, y: 13, dir: "left" },
       { x: 8, y: 7, dir: "up" },
       { x: 5, y: 3, dir: "right" },
       { x: 9, y: 12, dir: "left" },
