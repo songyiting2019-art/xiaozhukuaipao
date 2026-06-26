@@ -4,25 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>小猪出栏 - 第一关</title>
-    <link rel="stylesheet" href="./styles.css?v=mobile-perf-1" />
+    <link rel="stylesheet" href="./styles.css?v=clean-mobile-assets-1" />
   </head>
   <body class="is-starting">
     <main class="game-shell">
-      <div class="farm-decor decor-fence" aria-hidden="true"></div>
-      <div class="farm-decor decor-house" aria-hidden="true"></div>
-      <div class="farm-decor decor-tree decor-tree-left" aria-hidden="true"></div>
-      <div class="farm-decor decor-tree decor-tree-bottom" aria-hidden="true"></div>
-      <div class="farm-decor decor-bush decor-bush-left" aria-hidden="true"></div>
-      <div class="farm-decor decor-bush decor-bush-right" aria-hidden="true"></div>
-      <div class="farm-decor decor-flower decor-flower-left" aria-hidden="true"></div>
-      <div class="farm-decor decor-flower decor-flower-right" aria-hidden="true"></div>
-      <div class="farm-decor decor-bush decor-bush-top-left" aria-hidden="true"></div>
-      <div class="farm-decor decor-bush decor-bush-mid-right" aria-hidden="true"></div>
-      <div class="farm-decor decor-tree decor-tree-top-right" aria-hidden="true"></div>
-      <div class="farm-decor decor-flower decor-flower-top" aria-hidden="true"></div>
-      <div class="farm-decor decor-flower decor-flower-bottom" aria-hidden="true"></div>
-      <div class="farm-decor decor-flower decor-flower-mid-left" aria-hidden="true"></div>
-
       <section class="start-screen" id="startScreen" aria-labelledby="startTitle">
         <div class="start-card">
           <div class="start-badge">农场闯关</div>
@@ -80,6 +65,12 @@
         <button class="tool-card" id="removeTool" type="button">
           <span class="tool-pig" aria-hidden="true"></span>
           <span>移除</span>
+          <small class="tool-count">1/1</small>
+        </button>
+        <button class="tool-card" id="undoTool" type="button">
+          <span class="tool-undo-icon" aria-hidden="true">↶</span>
+          <span>撤销</span>
+          <small class="tool-count">2/2</small>
         </button>
       </section>
 
@@ -98,6 +89,6 @@
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </main>
 
-    <script src="./game.js?v=overall-check-1"></script>
+    <script src="./game.js?v=stun-orbit-3"></script>
   </body>
 </html>

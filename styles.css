@@ -5,30 +5,19 @@
   --pig-scale-x: 1.32;
   --pig-scale-y: 2.28;
   --pasture-radius: calc(var(--cell) * 2);
+  --pasture-radius-top: calc(var(--pasture-radius) * 1.12);
+  --pasture-radius-bottom: calc(var(--pasture-radius) * 1.24);
   --path-width: calc(var(--cell) * 1.8);
   --path-height: var(--path-width);
+  --path-frame-scale-x: 1.09;
+  --path-frame-scale-y: 1.1;
+  --pasture-offset-y: calc(var(--cell) * 0.58 + 5px);
   --grass-a: #97de59;
   --grass-b: #55bb49;
   --grass-c: #78cf53;
   --grass-texture: url("./assets/optimized/grass-texture-256.png");
-  --soil-frame: url("./assets/optimized/soil-path-gate-12x19-wide-720.png");
-  --farm-house: url("./assets/farm-house-alpha.png");
-  --bush: url("./assets/optimized/bush-alpha-256.png");
-  --tree-top: url("./assets/optimized/tree-top-alpha-256.png");
-  --fence: url("./assets/optimized/fence-alpha-360.png");
-  --flower-rocks: url("./assets/optimized/flower-rocks-alpha-256.png");
+  --soil-frame: url("./assets/optimized/soil-path-farm-gate-wide-mobile-quant.png");
   --button-bg: url("./assets/optimized/button-bg-420.png");
-  --grass-texture-opacity: 0.1;
-  --grid-opacity: 0.15;
-  --grid-soft: rgba(247, 255, 220, var(--grid-opacity));
-  --soil-a: #ecd18c;
-  --soil-b: #cf9852;
-  --soil-texture-opacity: 0.16;
-  --soil-speck: rgba(127, 82, 35, var(--soil-texture-opacity));
-  --edge-shadow: rgba(70, 48, 25, 0.18);
-  --object-shadow: rgba(72, 53, 29, 0.18);
-  --farm-wood: #a86934;
-  --farm-wood-dark: #74502d;
   --button-cream: #fff4a6;
   --button-yellow: #f6bf43;
   --button-green: #76c94b;
@@ -39,7 +28,6 @@
   --pig-ground-shadow: rgba(62, 61, 32, 0.26);
   --pig-sprite-glow: rgba(255, 223, 210, 0.32);
   --ink: #573b23;
-  --cream: #fff8d8;
 }
 
 * {
@@ -116,42 +104,6 @@ body::after {
   margin: 0 auto;
   padding: max(12px, env(safe-area-inset-top)) var(--shell-pad-x) max(14px, env(safe-area-inset-bottom));
   overflow: hidden;
-}
-
-.game-shell::before,
-.game-shell::after {
-  position: absolute;
-  content: "";
-  z-index: 0;
-  pointer-events: none;
-}
-
-.game-shell::before {
-  left: 18px;
-  right: 18px;
-  bottom: 92px;
-  height: 30px;
-  border-radius: 50%;
-  background: rgba(48, 104, 48, 0.14);
-  filter: blur(16px);
-}
-
-.game-shell::after {
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 52%, transparent 0 58%, rgba(43, 111, 49, 0.16) 100%);
-}
-
-.farm-decor {
-  position: absolute;
-  z-index: 1;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-  filter:
-    drop-shadow(4px 6px 5px var(--object-shadow))
-    saturate(0.92)
-    brightness(0.96);
-  pointer-events: none;
 }
 
 /* 开始页面 */
@@ -312,165 +264,6 @@ body.is-starting .tool-row {
     inset 0 0 0 4px rgba(255, 255, 255, 0.3),
     0 4px 0 rgba(88, 126, 33, 0.35),
     0 10px 18px rgba(74, 49, 22, 0.16);
-}
-
-.decor-fence {
-  top: 122px;
-  left: 50%;
-  width: min(252px, 64vw);
-  height: 52px;
-  background-image: var(--fence);
-  opacity: 0.72;
-  transform: translateX(-50%);
-}
-
-.decor-house {
-  display: none;
-  top: 72px;
-  right: -56px;
-  z-index: 3;
-  width: 168px;
-  height: 168px;
-  background-image: var(--farm-house);
-  background-position: center bottom;
-  filter:
-    drop-shadow(5px 8px 7px rgba(72, 53, 29, 0.22))
-    saturate(0.98)
-    brightness(0.98);
-}
-
-.decor-house::before {
-  position: absolute;
-  left: 34%;
-  bottom: 16%;
-  width: 76px;
-  height: 34px;
-  border-radius: 50%;
-  content: "";
-  background:
-    radial-gradient(circle at 25% 46%, rgba(255, 238, 174, 0.48) 0 7%, transparent 8%),
-    radial-gradient(circle at 75% 58%, rgba(125, 83, 39, 0.2) 0 6%, transparent 7%),
-    linear-gradient(180deg, rgba(236, 203, 130, 0.72), rgba(209, 151, 77, 0.64));
-  box-shadow: inset 0 1px 0 rgba(255, 245, 198, 0.42);
-  transform: rotate(-8deg);
-  z-index: -1;
-}
-
-.decor-tree-left {
-  top: 142px;
-  left: -18px;
-  width: 78px;
-  height: 78px;
-  background-image: var(--tree-top);
-  opacity: 0.9;
-}
-
-.decor-tree-bottom {
-  left: 12px;
-  bottom: 98px;
-  width: 84px;
-  height: 84px;
-  background-image: var(--tree-top);
-  opacity: 0.88;
-}
-
-.decor-tree-top-right {
-  top: 178px;
-  right: -28px;
-  width: 76px;
-  height: 76px;
-  background-image: var(--tree-top);
-  opacity: 0.82;
-  transform: rotate(12deg);
-}
-
-.decor-bush-left {
-  left: -12px;
-  bottom: 238px;
-  width: 68px;
-  height: 68px;
-  background-image: var(--bush);
-  opacity: 0.88;
-}
-
-.decor-bush-right {
-  right: 16px;
-  bottom: 132px;
-  width: 74px;
-  height: 74px;
-  background-image: var(--bush);
-  opacity: 0.84;
-  transform: rotate(-10deg);
-}
-
-.decor-bush-top-left {
-  top: 96px;
-  left: 16px;
-  width: 58px;
-  height: 58px;
-  background-image: var(--bush);
-  opacity: 0.72;
-  transform: rotate(18deg);
-}
-
-.decor-bush-mid-right {
-  right: -16px;
-  top: 44%;
-  width: 62px;
-  height: 62px;
-  background-image: var(--bush);
-  opacity: 0.78;
-  transform: rotate(8deg);
-}
-
-.decor-flower-left {
-  left: 34px;
-  bottom: 200px;
-  width: 72px;
-  height: 52px;
-  background-image: var(--flower-rocks);
-  opacity: 0.94;
-  transform: rotate(-8deg);
-}
-
-.decor-flower-right {
-  right: 20px;
-  bottom: 222px;
-  width: 74px;
-  height: 54px;
-  background-image: var(--flower-rocks);
-  opacity: 0.92;
-  transform: rotate(10deg);
-}
-
-.decor-flower-top {
-  top: 152px;
-  right: 54px;
-  width: 70px;
-  height: 50px;
-  background-image: var(--flower-rocks);
-  opacity: 0.9;
-  transform: rotate(-12deg);
-}
-
-.decor-flower-bottom {
-  left: 50%;
-  bottom: 116px;
-  width: 78px;
-  height: 54px;
-  background-image: var(--flower-rocks);
-  opacity: 0.9;
-  transform: translateX(-50%) rotate(5deg);
-}
-
-.decor-flower-mid-left {
-  left: -2px;
-  top: 48%;
-  width: 58px;
-  height: 42px;
-  background-image: var(--flower-rocks);
-  opacity: 0.76;
-  transform: rotate(16deg);
 }
 
 .hud,
@@ -682,37 +475,11 @@ body.is-starting .tool-row {
 /* 草坪核心区 */
 .pasture-wrap {
   position: relative;
+  isolation: isolate;
   display: grid;
   place-items: center;
   min-height: 0;
   padding: 6px 0 2px;
-}
-
-.pasture-wrap::before,
-.pasture-wrap::after {
-  position: absolute;
-  content: "";
-  pointer-events: none;
-}
-
-.pasture-wrap::before {
-  width: calc(var(--board-cols) * var(--cell) + var(--path-width) * 2);
-  height: calc(var(--board-rows) * var(--cell) + var(--path-height) * 2);
-  max-width: calc(100vw - 10px);
-  border-radius: calc(var(--pasture-radius) + var(--path-height));
-  background:
-    var(--soil-frame);
-  background-size:
-    100% 100%;
-  background-position: center;
-  background-repeat: no-repeat;
-  box-shadow:
-    4px 8px 16px rgba(70, 48, 25, 0.13);
-  transform: none;
-}
-
-.pasture-wrap::after {
-  display: none;
 }
 
 .pasture-shadow {
@@ -723,62 +490,76 @@ body.is-starting .tool-row {
   border-radius: calc(var(--pasture-radius) + 8px);
   background:
     radial-gradient(ellipse at 50% 54%, rgba(81, 54, 28, 0.14), rgba(81, 54, 28, 0.035) 68%, transparent 70%);
-  transform: translate(3px, 7px) rotate(-0.2deg);
+  transform: translate(3px, calc(7px + var(--pasture-offset-y))) rotate(-0.2deg);
   filter: blur(1.8px);
-  z-index: 1;
+  z-index: 0;
 }
 
 .pasture {
   position: relative;
   width: calc(var(--board-cols) * var(--cell));
   height: calc(var(--board-rows) * var(--cell));
-  border-radius: var(--pasture-radius);
+  border-radius:
+    var(--pasture-radius-top)
+    var(--pasture-radius-top)
+    var(--pasture-radius-bottom)
+    var(--pasture-radius-bottom);
+  background: transparent;
+  box-shadow: none;
+  isolation: isolate;
+  overflow: visible;
+  transform: translateY(var(--pasture-offset-y));
+  z-index: 1;
+}
+
+.pasture::before,
+.pasture::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.pasture::before {
+  inset: 0;
+  border-radius: inherit;
   background:
-    linear-gradient(var(--grid-soft) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-soft) 1px, transparent 1px),
-    linear-gradient(rgba(79, 184, 67, 0.78), rgba(79, 184, 67, 0.78)),
+    linear-gradient(rgba(79, 184, 67, 0.7), rgba(79, 184, 67, 0.7)),
     var(--grass-texture),
-    linear-gradient(180deg, rgba(174, 225, 95, 0.16), transparent 42%, rgba(39, 113, 42, 0.08)),
+    linear-gradient(180deg, rgba(174, 225, 95, 0.12), transparent 42%, rgba(39, 113, 42, 0.06)),
     linear-gradient(150deg, var(--grass-c), var(--grass-a) 36%, var(--grass-b));
   background-size:
-    var(--cell) var(--cell),
-    var(--cell) var(--cell),
     100% 100%,
     180px 180px,
     100% 100%,
     100% 100%;
-  background-blend-mode: normal, normal, color, multiply, normal, normal;
+  background-blend-mode: color, multiply, normal, normal;
   box-shadow:
-    inset 0 0 0 2px rgba(255, 255, 226, 0.38),
-    inset 0 8px 12px rgba(255, 255, 220, 0.16),
-    inset 0 -10px 14px rgba(36, 102, 37, 0.16),
-    0 0 0 calc(var(--cell) * 0.1) rgba(151, 214, 95, 0.32),
-    0 0 calc(var(--cell) * 0.38) calc(var(--cell) * 0.08) rgba(102, 176, 74, 0.28),
-    0 0 0 1px rgba(137, 207, 88, 0.42),
-    0 2px 0 rgba(77, 155, 72, 0.45),
-    3px 6px 14px rgba(70, 48, 25, 0.13);
-  overflow: visible;
+    inset 0 8px 14px rgba(255, 255, 220, 0.1),
+    inset 0 -10px 16px rgba(36, 102, 37, 0.1),
+    0 1px 6px rgba(70, 48, 25, 0.08);
+  z-index: 0;
+}
+
+.pasture::after {
+  left: 50%;
+  top: 50%;
+  width: calc(var(--board-cols) * var(--cell) + var(--path-width) * 2);
+  height: calc(var(--board-rows) * var(--cell) + var(--path-height) * 2);
+  border-radius: calc(var(--pasture-radius) + var(--path-height));
+  background: var(--soil-frame) center / 100% 100% no-repeat;
+  box-shadow: 4px 8px 16px rgba(70, 48, 25, 0.13);
+  transform: translate(-50%, calc(-50% - var(--pasture-offset-y))) scale(var(--path-frame-scale-x), var(--path-frame-scale-y));
   z-index: 2;
 }
 
 .play-area {
-  position: absolute;
-  left: calc(var(--area-x) * var(--cell));
-  top: calc(var(--area-y) * var(--cell));
-  width: calc(var(--area-cols) * var(--cell));
-  height: calc(var(--area-rows) * var(--cell));
-  border-radius: calc(var(--pasture-radius) * 0.88);
-  background: rgba(255, 255, 224, 0.045);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 230, 0.09),
-    inset 0 0 22px rgba(63, 145, 58, 0.08);
-  pointer-events: none;
+  display: none;
 }
 
 .combo-burst {
   position: absolute;
   left: calc(50% - var(--board-cols) * var(--cell) / 2 + var(--cell) * 0.74);
-  top: calc(50% - var(--board-rows) * var(--cell) / 2 - var(--cell) * 0.66);
+  top: calc(50% - var(--board-rows) * var(--cell) / 2 - var(--cell) * 0.66 + var(--pasture-offset-y));
   z-index: 8;
   display: flex;
   align-items: center;
@@ -942,10 +723,12 @@ body.is-starting .tool-row {
   transition:
     transform var(--move-ms, 115ms) linear,
     opacity 420ms ease;
-  z-index: var(--z);
+  z-index: calc(var(--z) + 10);
   touch-action: manipulation;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  --stun-star-x: 50%;
+  --stun-star-y: 10%;
 }
 
 .pig[aria-label="小猪朝右"],
@@ -957,6 +740,26 @@ body.is-starting .tool-row {
       calc(-50% + var(--run-x, 0px)),
       calc(-50% + var(--run-y, 0px) + var(--cell) * -0.13)
     );
+}
+
+.pig[aria-label="小猪朝上"] {
+  --stun-star-x: 50%;
+  --stun-star-y: 8%;
+}
+
+.pig[aria-label="小猪朝下"] {
+  --stun-star-x: 50%;
+  --stun-star-y: 78%;
+}
+
+.pig[aria-label="小猪朝右"] {
+  --stun-star-x: 76%;
+  --stun-star-y: 28%;
+}
+
+.pig[aria-label="小猪朝左"] {
+  --stun-star-x: 76%;
+  --stun-star-y: 28%;
 }
 
 .pig::before {
@@ -1033,6 +836,25 @@ body.is-starting .tool-row {
   filter:
     drop-shadow(0 0 5px rgba(255, 248, 181, 0.86))
     drop-shadow(3px 5px 4px rgba(90, 61, 36, 0.13));
+}
+
+.pig.path-runner {
+  position: fixed;
+  left: var(--path-left);
+  top: var(--path-top);
+  z-index: 32;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition:
+    left var(--move-ms, 115ms) linear,
+    top var(--move-ms, 115ms) linear,
+    opacity 220ms ease,
+    transform 220ms ease;
+}
+
+.pig.path-runner.is-path-disappearing {
+  opacity: 0;
+  transform: translate(-50%, -68%) scale(0.82);
 }
 
 .pig-body {
@@ -1202,19 +1024,27 @@ body.is-starting .tool-row {
 
 .pig.is-stunned .pig-shape::after {
   position: absolute;
-  left: 50%;
-  top: -12%;
-  width: calc(var(--cell) * 0.42);
-  height: calc(var(--cell) * 0.42);
-  content: "";
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 12%, var(--stun-color) 0 10%, transparent 11%),
-    radial-gradient(circle at 86% 48%, var(--stun-color) 0 10%, transparent 11%),
-    radial-gradient(circle at 50% 86%, var(--stun-color) 0 10%, transparent 11%),
-    radial-gradient(circle at 14% 48%, var(--stun-color) 0 10%, transparent 11%);
-  transform: translateX(-50%);
-  animation: stunned-stars 620ms linear;
+  left: var(--stun-star-x);
+  top: var(--stun-star-y);
+  display: grid;
+  place-items: center;
+  width: calc(var(--cell) * 0.76);
+  height: calc(var(--cell) * 0.76);
+  content: "★";
+  color: transparent;
+  font-size: calc(var(--cell) * 0.26);
+  line-height: 1;
+  text-shadow:
+    0 calc(var(--cell) * -0.33) 0 #fff7a8,
+    calc(var(--cell) * 0.33) 0 0 #ffd04b,
+    0 calc(var(--cell) * 0.33) 0 var(--stun-color),
+    calc(var(--cell) * -0.33) 0 0 #fff271,
+    0 0 4px rgba(255, 234, 87, 0.82),
+    0 1px 2px rgba(123, 74, 18, 0.28);
+  transform: translate(-50%, -50%) rotate(0deg);
+  transform-origin: 50% 50%;
+  animation: stunned-stars 820ms linear infinite;
+  pointer-events: none;
 }
 
 .pig.is-removed {
@@ -1271,8 +1101,17 @@ body.is-starting .tool-row {
 }
 
 @keyframes stunned-stars {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.04);
+  }
   to {
-    transform: translateX(-50%) rotate(360deg);
+    opacity: 0.95;
+    transform: translate(-50%, -50%) rotate(360deg) scale(0.96);
   }
 }
 
@@ -1337,6 +1176,13 @@ body.is-starting .tool-row {
     calc(var(--cell) * 0.16) calc(var(--cell) * -0.04) 0 rgba(241, 218, 178, 0.34);
   transform: translate(-50%, -50%) scale(0.55);
   animation: trail-dust 620ms ease-out forwards;
+}
+
+.effect-trail-path {
+  position: fixed;
+  left: var(--screen-x);
+  top: var(--screen-y);
+  z-index: 31;
 }
 
 .effect-burst {
@@ -1408,6 +1254,7 @@ body.is-starting .tool-row {
 }
 
 .tool-card {
+  position: relative;
   display: grid;
   grid-template-columns: 32px auto;
   align-items: center;
@@ -1434,6 +1281,16 @@ body.is-starting .tool-row {
   font-weight: 950;
   text-shadow: 0 1px 0 rgba(255, 248, 203, 0.65);
   cursor: pointer;
+}
+
+.tool-count {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  color: rgba(112, 64, 17, 0.72);
+  font-size: 11px;
+  font-weight: 950;
+  line-height: 1;
 }
 
 .tool-row:has(.tool-card:only-child) .tool-card {
@@ -1463,6 +1320,17 @@ body.is-starting .tool-row {
     0 13px 18px rgba(82, 55, 27, 0.13);
 }
 
+.tool-card:disabled {
+  cursor: default;
+  opacity: 0.48;
+  transform: none;
+  box-shadow:
+    inset 0 0 0 4px rgba(255, 255, 255, 0.18),
+    inset 0 -5px 0 rgba(132, 82, 31, 0.1),
+    0 4px 0 rgba(140, 96, 42, 0.42),
+    0 9px 12px rgba(82, 55, 27, 0.1);
+}
+
 .tool-pig {
   width: 30px;
   height: 24px;
@@ -1473,6 +1341,20 @@ body.is-starting .tool-row {
   box-shadow:
     inset -4px -3px 0 rgba(196, 82, 100, 0.15),
     0 2px 0 rgba(116, 77, 40, 0.14);
+}
+
+.tool-undo-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: #7a4a13;
+  font-size: 32px;
+  font-weight: 950;
+  line-height: 1;
+  text-shadow:
+    0 1px 0 rgba(255, 248, 203, 0.72),
+    0 2px 0 rgba(116, 77, 40, 0.12);
 }
 
 /* 通关结算 */
@@ -1705,36 +1587,6 @@ body.is-starting .tool-row {
 }
 
 @media (max-width: 390px) {
-  .game-shell::before,
-  .game-shell::after {
-    opacity: 0.42;
-    transform: scale(0.82);
-  }
-
-  .decor-house {
-    right: -12px;
-    width: 88px;
-    height: 88px;
-  }
-
-  .decor-fence {
-    width: min(224px, 58vw);
-  }
-
-  .decor-bush-top-left,
-  .decor-tree-top-right,
-  .decor-bush-mid-right,
-  .decor-flower-mid-left {
-    opacity: 0.58;
-    transform: scale(0.82);
-  }
-
-  .decor-flower-bottom {
-    bottom: 104px;
-    width: 62px;
-    height: 44px;
-  }
-
   .tool-row {
     gap: 9px;
   }

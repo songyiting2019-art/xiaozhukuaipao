@@ -26,6 +26,14 @@ const MOVE_EASING = {
   crashSettle: "cubic-bezier(0.34, 0, 0.22, 1)",
 };
 
+const PATH_EXIT = {
+  roadOffsetCells: 0.85,
+  gateYCells: -0.85,
+  gateExitYCells: -2.35,
+  turnPauseMs: 36,
+  fadeMs: 220,
+};
+
 const BOARD = {
   cols: 12,
   rows: 19,
@@ -37,17 +45,30 @@ const CORNER_CUTOUT = {
 
 const SCORE_RULES = {
   exitBase: 100,
-  comboBonus: 50,
+  comboBonusEarly: 30,
+  comboBonusMid: 20,
+  comboBonusLate: 10,
   removeScore: 0,
 };
 
+const TOOL_LIMITS = {
+  remove: 1,
+  undo: 2,
+};
+
 const STAR_RULES = {
-  twoStarAverageCombo: 16,
+  twoStarRatio: 0.68,
+  threeStarAverageComboByLevel: [
+    9, 11, 13, 15, 17,
+    18, 19, 20, 22, 23,
+    24, 25, 26, 27, 28,
+  ],
+  fallbackThreeStarAverageCombo: 28,
   roundTo: 50,
 };
 
 const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV1";
-const DEFAULT_LEVEL_INDEX = 0;
+const DEFAULT_LEVEL_INDEX = 14;
 
 const LEVELS = [
   {
@@ -61,160 +82,40 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 5,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 8,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 11,
-        dir: "up"
-      }
+      { x: 6, y: 9, dir: "up" },
+      { x: 7, y: 8, dir: "right" },
+      { x: 5, y: 8, dir: "right" },
+      { x: 5, y: 9, dir: "up" },
+      { x: 7, y: 10, dir: "left" },
+      { x: 4, y: 9, dir: "up" },
+      { x: 4, y: 11, dir: "left" },
+      { x: 5, y: 7, dir: "left" },
+      { x: 3, y: 7, dir: "left" },
+      { x: 3, y: 10, dir: "up" },
+      { x: 4, y: 12, dir: "up" },
+      { x: 5, y: 12, dir: "left" },
+      { x: 7, y: 7, dir: "left" },
+      { x: 3, y: 9, dir: "right" },
+      { x: 8, y: 9, dir: "right" },
+      { x: 7, y: 11, dir: "up" },
+      { x: 9, y: 8, dir: "right" },
+      { x: 5, y: 13, dir: "left" },
+      { x: 9, y: 10, dir: "down" },
+      { x: 7, y: 13, dir: "left" },
+      { x: 7, y: 6, dir: "right" },
+      { x: 3, y: 8, dir: "right" },
+      { x: 9, y: 6, dir: "right" },
+      { x: 5, y: 5, dir: "up" },
+      { x: 8, y: 11, dir: "up" },
+      { x: 2, y: 10, dir: "up" },
+      { x: 6, y: 4, dir: "right" },
+      { x: 7, y: 4, dir: "up" },
+      { x: 5, y: 14, dir: "up" },
+      { x: 6, y: 14, dir: "left" },
     ]
   },
   {
-    id: 15,
+    id: 2,
     name: "第2关",
     animalType: "pig",
     playArea: {
@@ -224,210 +125,50 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 2,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 10,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 13,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 10,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 10,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 15,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 18,
-        dir: "right"
-      }
+      { x: 6, y: 11, dir: "down" },
+      { x: 4, y: 10, dir: "right" },
+      { x: 3, y: 9, dir: "down" },
+      { x: 2, y: 8, dir: "right" },
+      { x: 1, y: 7, dir: "down" },
+      { x: 5, y: 6, dir: "left" },
+      { x: 5, y: 10, dir: "up" },
+      { x: 4, y: 7, dir: "left" },
+      { x: 8, y: 6, dir: "left" },
+      { x: 3, y: 6, dir: "down" },
+      { x: 8, y: 16, dir: "up" },
+      { x: 7, y: 16, dir: "right" },
+      { x: 7, y: 11, dir: "down" },
+      { x: 6, y: 14, dir: "down" },
+      { x: 7, y: 13, dir: "down" },
+      { x: 8, y: 14, dir: "up" },
+      { x: 6, y: 9, dir: "down" },
+      { x: 4, y: 12, dir: "left" },
+      { x: 8, y: 12, dir: "up" },
+      { x: 8, y: 9, dir: "up" },
+      { x: 8, y: 4, dir: "up" },
+      { x: 4, y: 13, dir: "right" },
+      { x: 8, y: 7, dir: "up" },
+      { x: 5, y: 3, dir: "right" },
+      { x: 9, y: 12, dir: "left" },
+      { x: 9, y: 8, dir: "down" },
+      { x: 4, y: 15, dir: "up" },
+      { x: 5, y: 17, dir: "right" },
+      { x: 7, y: 5, dir: "down" },
+      { x: 3, y: 4, dir: "right" },
+      { x: 4, y: 14, dir: "right" },
+      { x: 5, y: 2, dir: "left" },
+      { x: 2, y: 2, dir: "down" },
+      { x: 9, y: 15, dir: "down" },
+      { x: 8, y: 2, dir: "left" },
+      { x: 10, y: 15, dir: "down" },
+      { x: 3, y: 16, dir: "right" },
+      { x: 2, y: 11, dir: "down" },
+      { x: 2, y: 15, dir: "right" },
+      { x: 9, y: 5, dir: "left" },
     ]
   },
   {
-    id: 12,
+    id: 3,
     name: "第3关",
     animalType: "pig",
     playArea: {
@@ -437,280 +178,60 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 2,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 18,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 3,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 1,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 15,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 13,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 1,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 3,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 10,
-        dir: "down"
-      }
+      { x: 7, y: 10, dir: "right" },
+      { x: 5, y: 10, dir: "right" },
+      { x: 4, y: 13, dir: "up" },
+      { x: 4, y: 15, dir: "up" },
+      { x: 10, y: 9, dir: "up" },
+      { x: 10, y: 4, dir: "up" },
+      { x: 1, y: 16, dir: "right" },
+      { x: 10, y: 3, dir: "right" },
+      { x: 1, y: 6, dir: "down" },
+      { x: 10, y: 6, dir: "left" },
+      { x: 6, y: 6, dir: "left" },
+      { x: 11, y: 4, dir: "down" },
+      { x: 3, y: 6, dir: "left" },
+      { x: 7, y: 4, dir: "right" },
+      { x: 9, y: 9, dir: "up" },
+      { x: 9, y: 7, dir: "up" },
+      { x: 1, y: 13, dir: "down" },
+      { x: 3, y: 16, dir: "right" },
+      { x: 1, y: 10, dir: "down" },
+      { x: 6, y: 5, dir: "right" },
+      { x: 1, y: 15, dir: "down" },
+      { x: 1, y: 8, dir: "down" },
+      { x: 9, y: 5, dir: "right" },
+      { x: 4, y: 5, dir: "right" },
+      { x: 4, y: 11, dir: "up" },
+      { x: 6, y: 8, dir: "up" },
+      { x: 5, y: 8, dir: "up" },
+      { x: 3, y: 9, dir: "right" },
+      { x: 7, y: 11, dir: "left" },
+      { x: 9, y: 11, dir: "up" },
+      { x: 2, y: 8, dir: "down" },
+      { x: 6, y: 15, dir: "right" },
+      { x: 5, y: 17, dir: "left" },
+      { x: 10, y: 1, dir: "up" },
+      { x: 7, y: 16, dir: "right" },
+      { x: 5, y: 13, dir: "up" },
+      { x: 2, y: 3, dir: "down" },
+      { x: 5, y: 3, dir: "right" },
+      { x: 7, y: 12, dir: "right" },
+      { x: 1, y: 3, dir: "right" },
+      { x: 7, y: 13, dir: "up" },
+      { x: 0, y: 13, dir: "up" },
+      { x: 7, y: 2, dir: "left" },
+      { x: 0, y: 4, dir: "up" },
+      { x: 3, y: 2, dir: "left" },
+      { x: 3, y: 11, dir: "up" },
+      { x: 7, y: 7, dir: "left" },
+      { x: 9, y: 13, dir: "right" },
+      { x: 10, y: 11, dir: "up" },
+      { x: 0, y: 8, dir: "up" },
     ]
   },
   {
-    id: 14,
+    id: 4,
     name: "第4关",
     animalType: "pig",
     playArea: {
@@ -720,280 +241,70 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 9,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 8,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 2,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 15,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 7,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 6,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 13,
-        dir: "right"
-      }
+      { x: 2, y: 13, dir: "right" },
+      { x: 2, y: 11, dir: "down" },
+      { x: 9, y: 13, dir: "right" },
+      { x: 5, y: 10, dir: "left" },
+      { x: 5, y: 13, dir: "up" },
+      { x: 8, y: 11, dir: "left" },
+      { x: 8, y: 4, dir: "down" },
+      { x: 8, y: 7, dir: "down" },
+      { x: 6, y: 11, dir: "up" },
+      { x: 4, y: 13, dir: "right" },
+      { x: 1, y: 12, dir: "right" },
+      { x: 4, y: 3, dir: "right" },
+      { x: 3, y: 9, dir: "up" },
+      { x: 4, y: 9, dir: "down" },
+      { x: 3, y: 6, dir: "up" },
+      { x: 8, y: 10, dir: "down" },
+      { x: 2, y: 5, dir: "down" },
+      { x: 4, y: 5, dir: "down" },
+      { x: 2, y: 2, dir: "down" },
+      { x: 4, y: 2, dir: "left" },
+      { x: 5, y: 6, dir: "up" },
+      { x: 6, y: 6, dir: "left" },
+      { x: 7, y: 13, dir: "up" },
+      { x: 7, y: 11, dir: "up" },
+      { x: 0, y: 3, dir: "down" },
+      { x: 2, y: 7, dir: "down" },
+      { x: 0, y: 9, dir: "down" },
+      { x: 0, y: 6, dir: "down" },
+      { x: 9, y: 7, dir: "down" },
+      { x: 2, y: 14, dir: "right" },
+      { x: 9, y: 4, dir: "down" },
+      { x: 10, y: 3, dir: "up" },
+      { x: 3, y: 15, dir: "right" },
+      { x: 5, y: 1, dir: "left" },
+      { x: 7, y: 2, dir: "left" },
+      { x: 10, y: 5, dir: "left" },
+      { x: 11, y: 3, dir: "down" },
+      { x: 9, y: 1, dir: "left" },
+      { x: 2, y: 16, dir: "right" },
+      { x: 5, y: 16, dir: "up" },
+      { x: 10, y: 7, dir: "up" },
+      { x: 10, y: 14, dir: "up" },
+      { x: 10, y: 9, dir: "up" },
+      { x: 9, y: 15, dir: "right" },
+      { x: 9, y: 16, dir: "right" },
+      { x: 11, y: 12, dir: "down" },
+      { x: 1, y: 2, dir: "down" },
+      { x: 9, y: 17, dir: "left" },
+      { x: 3, y: 17, dir: "up" },
+      { x: 8, y: 18, dir: "left" },
+      { x: 0, y: 16, dir: "down" },
+      { x: 4, y: 18, dir: "left" },
+      { x: 11, y: 8, dir: "down" },
+      { x: 4, y: 0, dir: "left" },
+      { x: 1, y: 8, dir: "down" },
+      { x: 6, y: 17, dir: "up" },
+      { x: 8, y: 0, dir: "left" },
+      { x: 6, y: 5, dir: "left" },
+      { x: 11, y: 15, dir: "down" },
+      { x: 0, y: 11, dir: "down" },
     ]
   },
   {
-    id: 11,
+    id: 5,
     name: "第5关",
     animalType: "pig",
     playArea: {
@@ -1003,290 +314,80 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 9,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 8,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 18,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 0,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 2,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 17,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 17,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 7,
-        dir: "right"
-      }
+      { x: 5, y: 14, dir: "down" },
+      { x: 5, y: 11, dir: "down" },
+      { x: 3, y: 10, dir: "right" },
+      { x: 5, y: 18, dir: "down" },
+      { x: 3, y: 12, dir: "up" },
+      { x: 2, y: 13, dir: "right" },
+      { x: 2, y: 15, dir: "up" },
+      { x: 3, y: 16, dir: "up" },
+      { x: 4, y: 16, dir: "left" },
+      { x: 9, y: 15, dir: "left" },
+      { x: 6, y: 15, dir: "left" },
+      { x: 10, y: 7, dir: "down" },
+      { x: 5, y: 7, dir: "right" },
+      { x: 5, y: 2, dir: "down" },
+      { x: 4, y: 10, dir: "up" },
+      { x: 9, y: 7, dir: "right" },
+      { x: 8, y: 14, dir: "left" },
+      { x: 10, y: 14, dir: "down" },
+      { x: 9, y: 11, dir: "left" },
+      { x: 7, y: 11, dir: "left" },
+      { x: 6, y: 10, dir: "down" },
+      { x: 10, y: 10, dir: "down" },
+      { x: 3, y: 9, dir: "right" },
+      { x: 6, y: 2, dir: "down" },
+      { x: 8, y: 2, dir: "down" },
+      { x: 1, y: 16, dir: "up" },
+      { x: 7, y: 4, dir: "down" },
+      { x: 6, y: 6, dir: "right" },
+      { x: 9, y: 5, dir: "down" },
+      { x: 6, y: 5, dir: "right" },
+      { x: 9, y: 2, dir: "down" },
+      { x: 7, y: 13, dir: "right" },
+      { x: 9, y: 16, dir: "left" },
+      { x: 10, y: 3, dir: "down" },
+      { x: 4, y: 4, dir: "right" },
+      { x: 7, y: 9, dir: "down" },
+      { x: 1, y: 12, dir: "right" },
+      { x: 3, y: 5, dir: "right" },
+      { x: 0, y: 10, dir: "down" },
+      { x: 9, y: 17, dir: "left" },
+      { x: 0, y: 6, dir: "down" },
+      { x: 3, y: 3, dir: "right" },
+      { x: 2, y: 7, dir: "right" },
+      { x: 11, y: 14, dir: "down" },
+      { x: 3, y: 1, dir: "right" },
+      { x: 0, y: 4, dir: "down" },
+      { x: 1, y: 8, dir: "right" },
+      { x: 1, y: 2, dir: "right" },
+      { x: 11, y: 3, dir: "down" },
+      { x: 3, y: 15, dir: "left" },
+      { x: 7, y: 18, dir: "right" },
+      { x: 11, y: 10, dir: "down" },
+      { x: 3, y: 0, dir: "right" },
+      { x: 0, y: 16, dir: "down" },
+      { x: 11, y: 5, dir: "down" },
+      { x: 5, y: 0, dir: "right" },
+      { x: 3, y: 18, dir: "right" },
+      { x: 7, y: 1, dir: "down" },
+      { x: 11, y: 12, dir: "right" },
+      { x: 11, y: 7, dir: "down" },
+      { x: 8, y: 12, dir: "right" },
+      { x: 6, y: 8, dir: "down" },
+      { x: 11, y: 16, dir: "down" },
+      { x: 3, y: 7, dir: "up" },
+      { x: 7, y: 17, dir: "left" },
+      { x: 0, y: 11, dir: "left" },
+      { x: 8, y: 4, dir: "down" },
+      { x: 2, y: 4, dir: "right" },
+      { x: 9, y: 18, dir: "right" },
+      { x: 4, y: 2, dir: "up" },
     ]
   },
   {
-    id: 3,
+    id: 6,
     name: "第6关",
     animalType: "pig",
     playArea: {
@@ -1296,300 +397,80 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 5,
-        y: 0,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 1,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 1,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 1,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 3,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 3,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 6,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 14,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 15,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 18,
-        dir: "left"
-      }
+      { x: 6, y: 7, dir: "left" },
+      { x: 6, y: 11, dir: "up" },
+      { x: 6, y: 16, dir: "up" },
+      { x: 4, y: 16, dir: "right" },
+      { x: 2, y: 7, dir: "up" },
+      { x: 3, y: 5, dir: "right" },
+      { x: 7, y: 6, dir: "down" },
+      { x: 4, y: 8, dir: "down" },
+      { x: 2, y: 15, dir: "up" },
+      { x: 3, y: 15, dir: "left" },
+      { x: 4, y: 13, dir: "down" },
+      { x: 2, y: 12, dir: "up" },
+      { x: 6, y: 8, dir: "up" },
+      { x: 3, y: 7, dir: "up" },
+      { x: 3, y: 17, dir: "right" },
+      { x: 4, y: 10, dir: "down" },
+      { x: 6, y: 5, dir: "right" },
+      { x: 7, y: 10, dir: "left" },
+      { x: 9, y: 6, dir: "left" },
+      { x: 8, y: 13, dir: "up" },
+      { x: 8, y: 17, dir: "up" },
+      { x: 7, y: 15, dir: "left" },
+      { x: 9, y: 9, dir: "up" },
+      { x: 10, y: 14, dir: "left" },
+      { x: 6, y: 18, dir: "right" },
+      { x: 6, y: 13, dir: "right" },
+      { x: 7, y: 11, dir: "left" },
+      { x: 9, y: 15, dir: "up" },
+      { x: 3, y: 18, dir: "right" },
+      { x: 10, y: 11, dir: "left" },
+      { x: 10, y: 3, dir: "down" },
+      { x: 7, y: 3, dir: "right" },
+      { x: 5, y: 2, dir: "right" },
+      { x: 4, y: 3, dir: "right" },
+      { x: 10, y: 9, dir: "down" },
+      { x: 11, y: 7, dir: "down" },
+      { x: 7, y: 2, dir: "right" },
+      { x: 2, y: 2, dir: "right" },
+      { x: 1, y: 7, dir: "up" },
+      { x: 0, y: 9, dir: "left" },
+      { x: 11, y: 4, dir: "down" },
+      { x: 1, y: 11, dir: "up" },
+      { x: 4, y: 1, dir: "down" },
+      { x: 11, y: 13, dir: "down" },
+      { x: 2, y: 4, dir: "right" },
+      { x: 7, y: 1, dir: "left" },
+      { x: 1, y: 16, dir: "up" },
+      { x: 0, y: 14, dir: "up" },
+      { x: 0, y: 4, dir: "up" },
+      { x: 8, y: 0, dir: "left" },
+      { x: 3, y: 0, dir: "up" },
+      { x: 1, y: 13, dir: "right" },
+      { x: 9, y: 4, dir: "up" },
+      { x: 0, y: 11, dir: "up" },
+      { x: 10, y: 17, dir: "right" },
+      { x: 10, y: 15, dir: "left" },
+      { x: 1, y: 14, dir: "left" },
+      { x: 6, y: 0, dir: "left" },
+      { x: 0, y: 2, dir: "up" },
+      { x: 2, y: 0, dir: "up" },
+      { x: 5, y: 11, dir: "down" },
+      { x: 9, y: 1, dir: "left" },
+      { x: 10, y: 13, dir: "down" },
+      { x: 0, y: 6, dir: "up" },
+      { x: 11, y: 10, dir: "down" },
+      { x: 7, y: 4, dir: "right" },
+      { x: 10, y: 5, dir: "down" },
+      { x: 8, y: 8, dir: "up" },
+      { x: 3, y: 10, dir: "up" },
+      { x: 7, y: 18, dir: "down" },
     ]
   },
   {
-    id: 13,
+    id: 7,
     name: "第7关",
     animalType: "pig",
     playArea: {
@@ -1599,305 +480,80 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 2,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 0,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 13,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 7,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 10,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 18,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 18,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 13,
-        dir: "up"
-      }
+      { x: 0, y: 10, dir: "up" },
+      { x: 2, y: 10, dir: "left" },
+      { x: 0, y: 4, dir: "left" },
+      { x: 2, y: 12, dir: "up" },
+      { x: 0, y: 13, dir: "up" },
+      { x: 9, y: 13, dir: "left" },
+      { x: 0, y: 5, dir: "up" },
+      { x: 9, y: 17, dir: "up" },
+      { x: 2, y: 14, dir: "left" },
+      { x: 10, y: 16, dir: "up" },
+      { x: 6, y: 17, dir: "right" },
+      { x: 9, y: 14, dir: "left" },
+      { x: 5, y: 14, dir: "left" },
+      { x: 9, y: 16, dir: "right" },
+      { x: 5, y: 16, dir: "right" },
+      { x: 3, y: 17, dir: "right" },
+      { x: 4, y: 13, dir: "left" },
+      { x: 4, y: 10, dir: "down" },
+      { x: 6, y: 10, dir: "left" },
+      { x: 7, y: 18, dir: "right" },
+      { x: 9, y: 10, dir: "left" },
+      { x: 6, y: 9, dir: "left" },
+      { x: 8, y: 9, dir: "down" },
+      { x: 5, y: 8, dir: "down" },
+      { x: 7, y: 13, dir: "up" },
+      { x: 1, y: 8, dir: "right" },
+      { x: 3, y: 18, dir: "right" },
+      { x: 8, y: 7, dir: "left" },
+      { x: 4, y: 8, dir: "right" },
+      { x: 6, y: 7, dir: "down" },
+      { x: 2, y: 5, dir: "left" },
+      { x: 10, y: 11, dir: "up" },
+      { x: 10, y: 6, dir: "left" },
+      { x: 11, y: 10, dir: "up" },
+      { x: 4, y: 4, dir: "left" },
+      { x: 1, y: 16, dir: "up" },
+      { x: 8, y: 5, dir: "down" },
+      { x: 7, y: 12, dir: "right" },
+      { x: 6, y: 1, dir: "down" },
+      { x: 11, y: 15, dir: "up" },
+      { x: 6, y: 4, dir: "down" },
+      { x: 1, y: 15, dir: "right" },
+      { x: 1, y: 3, dir: "right" },
+      { x: 3, y: 1, dir: "right" },
+      { x: 6, y: 11, dir: "right" },
+      { x: 9, y: 3, dir: "up" },
+      { x: 10, y: 9, dir: "left" },
+      { x: 7, y: 0, dir: "left" },
+      { x: 10, y: 5, dir: "left" },
+      { x: 1, y: 6, dir: "up" },
+      { x: 9, y: 2, dir: "left" },
+      { x: 11, y: 2, dir: "up" },
+      { x: 3, y: 2, dir: "left" },
+      { x: 7, y: 1, dir: "up" },
+      { x: 3, y: 13, dir: "down" },
+      { x: 1, y: 1, dir: "up" },
+      { x: 11, y: 12, dir: "up" },
+      { x: 3, y: 0, dir: "left" },
+      { x: 1, y: 9, dir: "left" },
+      { x: 6, y: 15, dir: "right" },
+      { x: 10, y: 7, dir: "left" },
+      { x: 4, y: 6, dir: "down" },
+      { x: 7, y: 7, dir: "up" },
+      { x: 1, y: 12, dir: "up" },
+      { x: 7, y: 4, dir: "up" },
+      { x: 2, y: 6, dir: "left" },
+      { x: 8, y: 2, dir: "down" },
+      { x: 9, y: 0, dir: "up" },
+      { x: 9, y: 8, dir: "up" },
+      { x: 9, y: 15, dir: "right" },
     ]
   },
   {
-    id: 4,
+    id: 8,
     name: "第8关",
     animalType: "pig",
     playArea: {
@@ -1907,310 +563,80 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 2,
-        y: 1,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 2,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 10,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 10,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 14,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 18,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 18,
-        dir: "down"
-      }
+      { x: 6, y: 9, dir: "right" },
+      { x: 5, y: 11, dir: "up" },
+      { x: 7, y: 10, dir: "down" },
+      { x: 7, y: 12, dir: "right" },
+      { x: 5, y: 17, dir: "up" },
+      { x: 11, y: 13, dir: "down" },
+      { x: 7, y: 18, dir: "left" },
+      { x: 8, y: 13, dir: "down" },
+      { x: 8, y: 16, dir: "down" },
+      { x: 5, y: 13, dir: "up" },
+      { x: 10, y: 16, dir: "left" },
+      { x: 11, y: 10, dir: "down" },
+      { x: 3, y: 11, dir: "right" },
+      { x: 10, y: 12, dir: "down" },
+      { x: 9, y: 9, dir: "right" },
+      { x: 10, y: 15, dir: "left" },
+      { x: 9, y: 17, dir: "up" },
+      { x: 7, y: 6, dir: "down" },
+      { x: 10, y: 8, dir: "down" },
+      { x: 5, y: 8, dir: "right" },
+      { x: 3, y: 9, dir: "down" },
+      { x: 1, y: 8, dir: "right" },
+      { x: 4, y: 11, dir: "up" },
+      { x: 1, y: 13, dir: "up" },
+      { x: 5, y: 7, dir: "right" },
+      { x: 4, y: 15, dir: "up" },
+      { x: 0, y: 11, dir: "up" },
+      { x: 2, y: 7, dir: "right" },
+      { x: 3, y: 6, dir: "down" },
+      { x: 6, y: 6, dir: "down" },
+      { x: 3, y: 3, dir: "down" },
+      { x: 1, y: 2, dir: "right" },
+      { x: 5, y: 3, dir: "left" },
+      { x: 10, y: 3, dir: "left" },
+      { x: 2, y: 13, dir: "up" },
+      { x: 3, y: 17, dir: "right" },
+      { x: 1, y: 9, dir: "right" },
+      { x: 6, y: 1, dir: "down" },
+      { x: 1, y: 6, dir: "right" },
+      { x: 9, y: 1, dir: "left" },
+      { x: 11, y: 5, dir: "down" },
+      { x: 3, y: 0, dir: "right" },
+      { x: 9, y: 4, dir: "up" },
+      { x: 1, y: 4, dir: "right" },
+      { x: 0, y: 16, dir: "left" },
+      { x: 3, y: 18, dir: "left" },
+      { x: 0, y: 14, dir: "up" },
+      { x: 7, y: 4, dir: "right" },
+      { x: 5, y: 1, dir: "up" },
+      { x: 8, y: 0, dir: "right" },
+      { x: 6, y: 15, dir: "left" },
+      { x: 8, y: 8, dir: "down" },
+      { x: 1, y: 5, dir: "right" },
+      { x: 8, y: 14, dir: "left" },
+      { x: 11, y: 7, dir: "down" },
+      { x: 9, y: 7, dir: "up" },
+      { x: 8, y: 3, dir: "down" },
+      { x: 2, y: 10, dir: "right" },
+      { x: 7, y: 17, dir: "right" },
+      { x: 3, y: 16, dir: "down" },
+      { x: 2, y: 1, dir: "up" },
+      { x: 6, y: 14, dir: "down" },
+      { x: 3, y: 14, dir: "left" },
+      { x: 9, y: 10, dir: "right" },
+      { x: 10, y: 5, dir: "down" },
+      { x: 0, y: 3, dir: "left" },
+      { x: 7, y: 3, dir: "down" },
+      { x: 10, y: 13, dir: "right" },
+      { x: 4, y: 9, dir: "up" },
+      { x: 5, y: 4, dir: "up" },
     ]
   },
   {
-    id: 5,
+    id: 9,
     name: "第9关",
     animalType: "pig",
     playArea: {
@@ -2220,310 +646,90 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 4,
-        y: 0,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 2,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 7,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 8,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 8,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 14,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 15,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 17,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 17,
-        dir: "up"
-      }
+      { x: 3, y: 8, dir: "left" },
+      { x: 1, y: 9, dir: "down" },
+      { x: 4, y: 15, dir: "up" },
+      { x: 1, y: 12, dir: "down" },
+      { x: 1, y: 15, dir: "right" },
+      { x: 2, y: 9, dir: "left" },
+      { x: 3, y: 14, dir: "up" },
+      { x: 1, y: 14, dir: "right" },
+      { x: 7, y: 8, dir: "left" },
+      { x: 7, y: 4, dir: "down" },
+      { x: 4, y: 12, dir: "up" },
+      { x: 0, y: 9, dir: "down" },
+      { x: 3, y: 12, dir: "right" },
+      { x: 5, y: 9, dir: "left" },
+      { x: 5, y: 13, dir: "up" },
+      { x: 5, y: 3, dir: "right" },
+      { x: 8, y: 9, dir: "left" },
+      { x: 6, y: 13, dir: "up" },
+      { x: 5, y: 16, dir: "up" },
+      { x: 8, y: 6, dir: "down" },
+      { x: 5, y: 4, dir: "right" },
+      { x: 8, y: 11, dir: "left" },
+      { x: 3, y: 17, dir: "right" },
+      { x: 9, y: 5, dir: "down" },
+      { x: 10, y: 8, dir: "left" },
+      { x: 10, y: 6, dir: "left" },
+      { x: 5, y: 10, dir: "up" },
+      { x: 8, y: 3, dir: "down" },
+      { x: 5, y: 6, dir: "up" },
+      { x: 4, y: 5, dir: "right" },
+      { x: 11, y: 3, dir: "down" },
+      { x: 8, y: 13, dir: "left" },
+      { x: 10, y: 7, dir: "left" },
+      { x: 9, y: 2, dir: "down" },
+      { x: 10, y: 10, dir: "left" },
+      { x: 0, y: 6, dir: "down" },
+      { x: 7, y: 1, dir: "right" },
+      { x: 2, y: 4, dir: "right" },
+      { x: 5, y: 2, dir: "right" },
+      { x: 6, y: 16, dir: "up" },
+      { x: 2, y: 7, dir: "up" },
+      { x: 6, y: 4, dir: "up" },
+      { x: 2, y: 1, dir: "right" },
+      { x: 8, y: 16, dir: "left" },
+      { x: 2, y: 2, dir: "right" },
+      { x: 10, y: 12, dir: "up" },
+      { x: 10, y: 15, dir: "right" },
+      { x: 0, y: 13, dir: "down" },
+      { x: 0, y: 4, dir: "down" },
+      { x: 10, y: 16, dir: "left" },
+      { x: 11, y: 12, dir: "down" },
+      { x: 7, y: 18, dir: "right" },
+      { x: 6, y: 0, dir: "right" },
+      { x: 7, y: 12, dir: "right" },
+      { x: 11, y: 14, dir: "down" },
+      { x: 9, y: 0, dir: "right" },
+      { x: 4, y: 18, dir: "right" },
+      { x: 1, y: 17, dir: "down" },
+      { x: 7, y: 7, dir: "left" },
+      { x: 10, y: 1, dir: "up" },
+      { x: 2, y: 11, dir: "left" },
+      { x: 9, y: 18, dir: "right" },
+      { x: 1, y: 6, dir: "down" },
+      { x: 10, y: 17, dir: "right" },
+      { x: 6, y: 10, dir: "up" },
+      { x: 5, y: 1, dir: "right" },
+      { x: 7, y: 14, dir: "down" },
+      { x: 4, y: 0, dir: "right" },
+      { x: 3, y: 6, dir: "left" },
+      { x: 11, y: 5, dir: "down" },
+      { x: 1, y: 13, dir: "left" },
+      { x: 0, y: 11, dir: "down" },
+      { x: 9, y: 12, dir: "right" },
+      { x: 10, y: 9, dir: "left" },
+      { x: 3, y: 7, dir: "left" },
+      { x: 6, y: 6, dir: "left" },
+      { x: 8, y: 17, dir: "right" },
+      { x: 10, y: 14, dir: "right" },
+      { x: 2, y: 3, dir: "right" },
+      { x: 4, y: 10, dir: "up" },
     ]
   },
   {
-    id: 8,
+    id: 10,
     name: "第10关",
     animalType: "pig",
     playArea: {
@@ -2533,320 +739,90 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 4,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 1,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 1,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 3,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 6,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 17,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 18,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 18,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 18,
-        dir: "right"
-      }
+      { x: 7, y: 5, dir: "left" },
+      { x: 7, y: 13, dir: "up" },
+      { x: 1, y: 5, dir: "left" },
+      { x: 4, y: 14, dir: "right" },
+      { x: 4, y: 5, dir: "left" },
+      { x: 8, y: 3, dir: "down" },
+      { x: 4, y: 7, dir: "down" },
+      { x: 3, y: 5, dir: "down" },
+      { x: 7, y: 6, dir: "left" },
+      { x: 2, y: 2, dir: "right" },
+      { x: 2, y: 3, dir: "right" },
+      { x: 7, y: 9, dir: "up" },
+      { x: 3, y: 10, dir: "down" },
+      { x: 6, y: 3, dir: "right" },
+      { x: 5, y: 8, dir: "up" },
+      { x: 5, y: 10, dir: "right" },
+      { x: 6, y: 10, dir: "up" },
+      { x: 5, y: 16, dir: "up" },
+      { x: 6, y: 2, dir: "right" },
+      { x: 1, y: 9, dir: "right" },
+      { x: 9, y: 11, dir: "left" },
+      { x: 9, y: 6, dir: "down" },
+      { x: 0, y: 3, dir: "down" },
+      { x: 8, y: 8, dir: "left" },
+      { x: 1, y: 11, dir: "up" },
+      { x: 10, y: 4, dir: "down" },
+      { x: 10, y: 8, dir: "down" },
+      { x: 4, y: 12, dir: "left" },
+      { x: 1, y: 7, dir: "left" },
+      { x: 6, y: 15, dir: "up" },
+      { x: 11, y: 7, dir: "up" },
+      { x: 9, y: 13, dir: "left" },
+      { x: 9, y: 15, dir: "right" },
+      { x: 1, y: 14, dir: "right" },
+      { x: 10, y: 12, dir: "left" },
+      { x: 4, y: 1, dir: "down" },
+      { x: 6, y: 0, dir: "up" },
+      { x: 2, y: 15, dir: "right" },
+      { x: 11, y: 3, dir: "up" },
+      { x: 1, y: 16, dir: "right" },
+      { x: 3, y: 17, dir: "right" },
+      { x: 8, y: 1, dir: "down" },
+      { x: 0, y: 13, dir: "down" },
+      { x: 3, y: 1, dir: "down" },
+      { x: 7, y: 17, dir: "up" },
+      { x: 3, y: 13, dir: "left" },
+      { x: 3, y: 18, dir: "left" },
+      { x: 11, y: 15, dir: "up" },
+      { x: 10, y: 16, dir: "right" },
+      { x: 8, y: 18, dir: "down" },
+      { x: 8, y: 14, dir: "down" },
+      { x: 1, y: 8, dir: "left" },
+      { x: 6, y: 7, dir: "up" },
+      { x: 9, y: 2, dir: "down" },
+      { x: 11, y: 9, dir: "up" },
+      { x: 5, y: 18, dir: "left" },
+      { x: 2, y: 1, dir: "right" },
+      { x: 2, y: 12, dir: "down" },
+      { x: 0, y: 6, dir: "down" },
+      { x: 5, y: 4, dir: "right" },
+      { x: 9, y: 9, dir: "right" },
+      { x: 0, y: 11, dir: "down" },
+      { x: 11, y: 2, dir: "right" },
+      { x: 3, y: 16, dir: "right" },
+      { x: 7, y: 0, dir: "up" },
+      { x: 10, y: 6, dir: "left" },
+      { x: 10, y: 10, dir: "right" },
+      { x: 7, y: 11, dir: "up" },
+      { x: 3, y: 8, dir: "down" },
+      { x: 10, y: 17, dir: "right" },
+      { x: 10, y: 15, dir: "down" },
+      { x: 10, y: 5, dir: "left" },
+      { x: 4, y: 9, dir: "down" },
+      { x: 2, y: 6, dir: "left" },
+      { x: 1, y: 4, dir: "right" },
+      { x: 5, y: 0, dir: "up" },
+      { x: 7, y: 7, dir: "up" },
+      { x: 3, y: 12, dir: "down" },
+      { x: 11, y: 13, dir: "up" },
+      { x: 5, y: 15, dir: "right" },
     ]
   },
-  {
-    id: 7,
+    {
+    id: 11,
     name: "第11关",
     animalType: "pig",
     playArea: {
@@ -2856,330 +832,89 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 4,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 0,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 1,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 15,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 17,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 18,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 18,
-        dir: "left"
-      }
+      { x: 8, y: 7, dir: "right" },
+      { x: 8, y: 14, dir: "up" },
+      { x: 9, y: 6, dir: "up" },
+      { x: 5, y: 14, dir: "right" },
+      { x: 5, y: 17, dir: "up" },
+      { x: 9, y: 5, dir: "right" },
+      { x: 8, y: 18, dir: "left" },
+      { x: 10, y: 13, dir: "left" },
+      { x: 8, y: 8, dir: "up" },
+      { x: 11, y: 6, dir: "down" },
+      { x: 11, y: 8, dir: "down" },
+      { x: 4, y: 16, dir: "up" },
+      { x: 6, y: 16, dir: "left" },
+      { x: 6, y: 8, dir: "down" },
+      { x: 11, y: 10, dir: "down" },
+      { x: 7, y: 17, dir: "left" },
+      { x: 8, y: 10, dir: "up" },
+      { x: 6, y: 10, dir: "down" },
+      { x: 2, y: 7, dir: "right" },
+      { x: 2, y: 4, dir: "down" },
+      { x: 3, y: 8, dir: "right" },
+      { x: 2, y: 1, dir: "down" },
+      { x: 7, y: 13, dir: "up" },
+      { x: 8, y: 4, dir: "left" },
+      { x: 2, y: 9, dir: "right" },
+      { x: 4, y: 0, dir: "left" },
+      { x: 5, y: 8, dir: "up" },
+      { x: 9, y: 16, dir: "left" },
+      { x: 3, y: 11, dir: "up" },
+      { x: 6, y: 3, dir: "left" },
+      { x: 9, y: 12, dir: "left" },
+      { x: 10, y: 5, dir: "down" },
+      { x: 1, y: 5, dir: "down" },
+      { x: 5, y: 2, dir: "up" },
+      { x: 4, y: 12, dir: "left" },
+      { x: 4, y: 4, dir: "up" },
+      { x: 2, y: 13, dir: "left" },
+      { x: 7, y: 2, dir: "left" },
+      { x: 10, y: 9, dir: "down" },
+      { x: 11, y: 4, dir: "down" },
+      { x: 1, y: 12, dir: "left" },
+      { x: 1, y: 11, dir: "right" },
+      { x: 2, y: 16, dir: "left" },
+      { x: 0, y: 9, dir: "down" },
+      { x: 1, y: 2, dir: "down" },
+      { x: 5, y: 5, dir: "up" },
+      { x: 11, y: 15, dir: "right" },
+      { x: 7, y: 0, dir: "up" },
+      { x: 9, y: 1, dir: "left" },
+      { x: 0, y: 3, dir: "down" },
+      { x: 1, y: 15, dir: "down" },
+      { x: 7, y: 10, dir: "up" },
+      { x: 2, y: 2, dir: "left" },
+      { x: 0, y: 14, dir: "down" },
+      { x: 2, y: 18, dir: "down" },
+      { x: 0, y: 6, dir: "down" },
+      { x: 3, y: 6, dir: "left" },
+      { x: 3, y: 17, dir: "up" },
+      { x: 1, y: 10, dir: "right" },
+      { x: 10, y: 2, dir: "left" },
+      { x: 11, y: 12, dir: "down" },
+      { x: 5, y: 1, dir: "left" },
+      { x: 9, y: 17, dir: "left" },
+      { x: 1, y: 17, dir: "down" },
+      { x: 0, y: 16, dir: "down" },
+      { x: 4, y: 13, dir: "left" },
+      { x: 5, y: 11, dir: "right" },
+      { x: 9, y: 10, dir: "up" },
+      { x: 8, y: 0, dir: "up" },
+      { x: 11, y: 14, dir: "right" },
+      { x: 3, y: 4, dir: "up" },
+      { x: 7, y: 5, dir: "right" },
+      { x: 10, y: 7, dir: "down" },
+      { x: 10, y: 11, dir: "down" },
+      { x: 7, y: 6, dir: "left" },
+      { x: 3, y: 1, dir: "left" },
+      { x: 4, y: 9, dir: "right" },
+      { x: 5, y: 10, dir: "right" },
+      { x: 4, y: 7, dir: "right" },
     ]
   },
   {
-    id: 6,
+    id: 12,
     name: "第12关",
     animalType: "pig",
     playArea: {
@@ -3189,340 +924,90 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 4,
-        y: 0,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 0,
-        dir: "right"
-      },
-      {
-        x: 9,
-        y: 0,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 1,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 1,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 8,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 8,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 12,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 16,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 18,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 18,
-        dir: "right"
-      }
+      { x: 6, y: 9, dir: "up" },
+      { x: 6, y: 7, dir: "left" },
+      { x: 4, y: 10, dir: "right" },
+      { x: 3, y: 7, dir: "down" },
+      { x: 7, y: 9, dir: "up" },
+      { x: 2, y: 9, dir: "right" },
+      { x: 1, y: 3, dir: "down" },
+      { x: 2, y: 13, dir: "up" },
+      { x: 5, y: 13, dir: "left" },
+      { x: 10, y: 13, dir: "left" },
+      { x: 6, y: 14, dir: "left" },
+      { x: 5, y: 8, dir: "down" },
+      { x: 5, y: 12, dir: "down" },
+      { x: 1, y: 11, dir: "right" },
+      { x: 1, y: 8, dir: "right" },
+      { x: 3, y: 4, dir: "down" },
+      { x: 4, y: 6, dir: "up" },
+      { x: 1, y: 4, dir: "right" },
+      { x: 9, y: 12, dir: "right" },
+      { x: 6, y: 15, dir: "left" },
+      { x: 0, y: 15, dir: "up" },
+      { x: 6, y: 5, dir: "right" },
+      { x: 4, y: 3, dir: "up" },
+      { x: 10, y: 11, dir: "down" },
+      { x: 3, y: 2, dir: "left" },
+      { x: 8, y: 6, dir: "left" },
+      { x: 9, y: 8, dir: "up" },
+      { x: 1, y: 5, dir: "right" },
+      { x: 4, y: 14, dir: "up" },
+      { x: 5, y: 17, dir: "down" },
+      { x: 6, y: 17, dir: "up" },
+      { x: 10, y: 7, dir: "down" },
+      { x: 8, y: 5, dir: "down" },
+      { x: 7, y: 17, dir: "up" },
+      { x: 5, y: 1, dir: "down" },
+      { x: 9, y: 15, dir: "left" },
+      { x: 4, y: 17, dir: "up" },
+      { x: 7, y: 3, dir: "left" },
+      { x: 9, y: 17, dir: "up" },
+      { x: 1, y: 16, dir: "down" },
+      { x: 11, y: 5, dir: "down" },
+      { x: 2, y: 1, dir: "right" },
+      { x: 7, y: 0, dir: "up" },
+      { x: 4, y: 8, dir: "up" },
+      { x: 1, y: 12, dir: "right" },
+      { x: 8, y: 1, dir: "down" },
+      { x: 9, y: 2, dir: "left" },
+      { x: 2, y: 17, dir: "up" },
+      { x: 11, y: 16, dir: "right" },
+      { x: 10, y: 1, dir: "right" },
+      { x: 11, y: 9, dir: "down" },
+      { x: 11, y: 15, dir: "down" },
+      { x: 6, y: 0, dir: "up" },
+      { x: 10, y: 5, dir: "right" },
+      { x: 11, y: 11, dir: "down" },
+      { x: 2, y: 10, dir: "up" },
+      { x: 2, y: 6, dir: "up" },
+      { x: 8, y: 13, dir: "left" },
+      { x: 0, y: 9, dir: "up" },
+      { x: 3, y: 15, dir: "down" },
+      { x: 7, y: 4, dir: "right" },
+      { x: 8, y: 10, dir: "down" },
+      { x: 10, y: 3, dir: "left" },
+      { x: 4, y: 0, dir: "right" },
+      { x: 4, y: 12, dir: "right" },
+      { x: 5, y: 4, dir: "down" },
+      { x: 0, y: 13, dir: "up" },
+      { x: 7, y: 11, dir: "right" },
+      { x: 1, y: 7, dir: "down" },
+      { x: 0, y: 6, dir: "up" },
+      { x: 3, y: 18, dir: "down" },
+      { x: 8, y: 14, dir: "left" },
+      { x: 3, y: 13, dir: "left" },
+      { x: 8, y: 8, dir: "down" },
+      { x: 6, y: 6, dir: "left" },
+      { x: 8, y: 18, dir: "down" },
+      { x: 10, y: 4, dir: "right" },
+      { x: 9, y: 10, dir: "up" },
+      { x: 0, y: 2, dir: "up" },
+      { x: 7, y: 16, dir: "right" },
     ]
   },
   {
-    id: 9,
+    id: 13,
     name: "第13关",
     animalType: "pig",
     playArea: {
@@ -3532,340 +1017,90 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 3,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 1,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 1,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 1,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 3,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 5,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 6,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 6,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 7,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 7,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 10,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 11,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 12,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 12,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 13,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 15,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 15,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 17,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 17,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 18,
-        dir: "right"
-      }
+      { x: 1, y: 14, dir: "down" },
+      { x: 1, y: 2, dir: "down" },
+      { x: 7, y: 1, dir: "left" },
+      { x: 1, y: 10, dir: "down" },
+      { x: 1, y: 16, dir: "right" },
+      { x: 3, y: 1, dir: "left" },
+      { x: 8, y: 15, dir: "up" },
+      { x: 0, y: 3, dir: "down" },
+      { x: 8, y: 6, dir: "up" },
+      { x: 8, y: 9, dir: "up" },
+      { x: 6, y: 16, dir: "right" },
+      { x: 0, y: 13, dir: "down" },
+      { x: 1, y: 5, dir: "down" },
+      { x: 8, y: 3, dir: "up" },
+      { x: 6, y: 2, dir: "left" },
+      { x: 3, y: 16, dir: "right" },
+      { x: 1, y: 8, dir: "down" },
+      { x: 0, y: 6, dir: "down" },
+      { x: 1, y: 12, dir: "left" },
+      { x: 8, y: 11, dir: "up" },
+      { x: 6, y: 5, dir: "up" },
+      { x: 5, y: 3, dir: "left" },
+      { x: 3, y: 4, dir: "left" },
+      { x: 3, y: 9, dir: "right" },
+      { x: 3, y: 7, dir: "left" },
+      { x: 7, y: 8, dir: "up" },
+      { x: 5, y: 10, dir: "left" },
+      { x: 2, y: 14, dir: "up" },
+      { x: 0, y: 9, dir: "down" },
+      { x: 5, y: 6, dir: "right" },
+      { x: 6, y: 12, dir: "up" },
+      { x: 10, y: 5, dir: "left" },
+      { x: 2, y: 6, dir: "right" },
+      { x: 4, y: 15, dir: "left" },
+      { x: 10, y: 3, dir: "down" },
+      { x: 8, y: 0, dir: "right" },
+      { x: 11, y: 9, dir: "up" },
+      { x: 4, y: 11, dir: "right" },
+      { x: 7, y: 14, dir: "up" },
+      { x: 5, y: 0, dir: "right" },
+      { x: 2, y: 3, dir: "left" },
+      { x: 9, y: 6, dir: "up" },
+      { x: 7, y: 17, dir: "left" },
+      { x: 10, y: 13, dir: "left" },
+      { x: 9, y: 16, dir: "up" },
+      { x: 4, y: 18, dir: "right" },
+      { x: 10, y: 14, dir: "left" },
+      { x: 9, y: 1, dir: "left" },
+      { x: 11, y: 6, dir: "up" },
+      { x: 9, y: 18, dir: "right" },
+      { x: 4, y: 12, dir: "left" },
+      { x: 10, y: 15, dir: "left" },
+      { x: 10, y: 9, dir: "down" },
+      { x: 9, y: 11, dir: "up" },
+      { x: 3, y: 17, dir: "left" },
+      { x: 11, y: 11, dir: "up" },
+      { x: 0, y: 15, dir: "down" },
+      { x: 10, y: 4, dir: "left" },
+      { x: 4, y: 13, dir: "left" },
+      { x: 2, y: 10, dir: "up" },
+      { x: 5, y: 8, dir: "right" },
+      { x: 7, y: 3, dir: "up" },
+      { x: 7, y: 13, dir: "left" },
+      { x: 11, y: 2, dir: "up" },
+      { x: 10, y: 17, dir: "down" },
+      { x: 1, y: 17, dir: "left" },
+      { x: 5, y: 18, dir: "down" },
+      { x: 6, y: 17, dir: "up" },
+      { x: 10, y: 12, dir: "down" },
+      { x: 3, y: 0, dir: "right" },
+      { x: 2, y: 4, dir: "up" },
+      { x: 5, y: 1, dir: "left" },
+      { x: 3, y: 2, dir: "left" },
+      { x: 8, y: 14, dir: "left" },
+      { x: 0, y: 11, dir: "down" },
+      { x: 4, y: 5, dir: "left" },
+      { x: 9, y: 8, dir: "up" },
+      { x: 3, y: 14, dir: "up" },
+      { x: 10, y: 7, dir: "down" },
+      { x: 5, y: 7, dir: "left" },
     ]
   },
   {
-    id: 2,
+    id: 14,
     name: "第14关",
     animalType: "pig",
     playArea: {
@@ -3875,350 +1110,90 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 6,
-        y: 0,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 1,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 1,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 1,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 1,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 3,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 3,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 4,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 5,
-        dir: "left"
-      },
-      {
-        x: 1,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 6,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 6,
-        dir: "right"
-      },
-      {
-        x: 2,
-        y: 7,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 8,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 8,
-        y: 9,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 10,
-        dir: "up"
-      },
-      {
-        x: 6,
-        y: 10,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 10,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 7,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 4,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 13,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 1,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 8,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 11,
-        y: 14,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 7,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 11,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 17,
-        dir: "up"
-      },
-      {
-        x: 5,
-        y: 17,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 18,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 18,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 18,
-        dir: "down"
-      }
+      { x: 5, y: 10, dir: "right" },
+      { x: 2, y: 6, dir: "up" },
+      { x: 9, y: 8, dir: "down" },
+      { x: 4, y: 5, dir: "down" },
+      { x: 4, y: 8, dir: "left" },
+      { x: 5, y: 7, dir: "down" },
+      { x: 8, y: 14, dir: "right" },
+      { x: 3, y: 11, dir: "up" },
+      { x: 4, y: 12, dir: "left" },
+      { x: 6, y: 13, dir: "left" },
+      { x: 6, y: 9, dir: "right" },
+      { x: 1, y: 12, dir: "down" },
+      { x: 7, y: 11, dir: "right" },
+      { x: 11, y: 11, dir: "down" },
+      { x: 9, y: 9, dir: "right" },
+      { x: 4, y: 9, dir: "right" },
+      { x: 2, y: 13, dir: "up" },
+      { x: 5, y: 11, dir: "right" },
+      { x: 6, y: 12, dir: "left" },
+      { x: 10, y: 11, dir: "right" },
+      { x: 10, y: 13, dir: "down" },
+      { x: 7, y: 8, dir: "left" },
+      { x: 6, y: 8, dir: "down" },
+      { x: 8, y: 13, dir: "left" },
+      { x: 2, y: 10, dir: "right" },
+      { x: 3, y: 13, dir: "left" },
+      { x: 9, y: 10, dir: "right" },
+      { x: 10, y: 10, dir: "down" },
+      { x: 7, y: 3, dir: "left" },
+      { x: 1, y: 9, dir: "right" },
+      { x: 6, y: 4, dir: "right" },
+      { x: 4, y: 3, dir: "left" },
+      { x: 8, y: 4, dir: "up" },
+      { x: 3, y: 3, dir: "up" },
+      { x: 9, y: 6, dir: "down" },
+      { x: 2, y: 8, dir: "left" },
+      { x: 0, y: 7, dir: "left" },
+      { x: 3, y: 7, dir: "left" },
+      { x: 1, y: 4, dir: "down" },
+      { x: 2, y: 4, dir: "up" },
+      { x: 11, y: 7, dir: "down" },
+      { x: 7, y: 6, dir: "right" },
+      { x: 4, y: 6, dir: "right" },
+      { x: 10, y: 8, dir: "left" },
+      { x: 1, y: 6, dir: "right" },
+      { x: 10, y: 6, dir: "down" },
+      { x: 8, y: 6, dir: "up" },
+      { x: 7, y: 5, dir: "right" },
+      { x: 0, y: 13, dir: "down" },
+      { x: 0, y: 4, dir: "down" },
+      { x: 1, y: 14, dir: "down" },
+      { x: 4, y: 2, dir: "left" },
+      { x: 7, y: 0, dir: "right" },
+      { x: 3, y: 0, dir: "up" },
+      { x: 5, y: 1, dir: "right" },
+      { x: 5, y: 14, dir: "down" },
+      { x: 6, y: 16, dir: "down" },
+      { x: 7, y: 15, dir: "up" },
+      { x: 4, y: 15, dir: "right" },
+      { x: 8, y: 2, dir: "left" },
+      { x: 3, y: 16, dir: "right" },
+      { x: 9, y: 15, dir: "right" },
+      { x: 6, y: 18, dir: "left" },
+      { x: 10, y: 2, dir: "left" },
+      { x: 9, y: 0, dir: "right" },
+      { x: 11, y: 4, dir: "down" },
+      { x: 1, y: 15, dir: "right" },
+      { x: 11, y: 14, dir: "down" },
+      { x: 9, y: 4, dir: "down" },
+      { x: 10, y: 14, dir: "right" },
+      { x: 8, y: 1, dir: "right" },
+      { x: 10, y: 16, dir: "down" },
+      { x: 1, y: 2, dir: "down" },
+      { x: 4, y: 14, dir: "right" },
+      { x: 8, y: 17, dir: "left" },
+      { x: 10, y: 4, dir: "down" },
+      { x: 4, y: 17, dir: "down" },
+      { x: 5, y: 17, dir: "left" },
+      { x: 2, y: 17, dir: "up" },
+      { x: 2, y: 2, dir: "up" },
     ]
   },
   {
-    id: 10,
+    id: 15,
     name: "第15关",
     animalType: "pig",
     playArea: {
@@ -4228,349 +1203,102 @@ const LEVELS = [
       rows: 19
     },
     animals: [
-      {
-        x: 3,
-        y: 0,
-        dir: "up"
-      },
-      {
-        x: 7,
-        y: 0,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 0,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 1,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 1,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 2,
-        dir: "down"
-      },
-      {
-        x: 3,
-        y: 2,
-        dir: "up"
-      },
-      {
-        x: 4,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 6,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 2,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 3,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 3,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 4,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 4,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 4,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 4,
-        y: 5,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 10,
-        y: 5,
-        dir: "right"
-      },
-      {
-        x: 1,
-        y: 6,
-        dir: "right"
-      },
-      {
-        x: 5,
-        y: 6,
-        dir: "down"
-      },
-      {
-        x: 6,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 10,
-        y: 6,
-        dir: "up"
-      },
-      {
-        x: 0,
-        y: 7,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 7,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 8,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 8,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 8,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 9,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 3,
-        y: 9,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 9,
-        dir: "right"
-      },
-      {
-        x: 0,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 1,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 5,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 7,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 8,
-        y: 11,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 11,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 11,
-        dir: "left"
-      },
-      {
-        x: 3,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 10,
-        y: 12,
-        dir: "left"
-      },
-      {
-        x: 0,
-        y: 13,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 4,
-        y: 13,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 13,
-        dir: "down"
-      },
-      {
-        x: 2,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 9,
-        y: 14,
-        dir: "left"
-      },
-      {
-        x: 11,
-        y: 14,
-        dir: "down"
-      },
-      {
-        x: 0,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 2,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 3,
-        y: 15,
-        dir: "up"
-      },
-      {
-        x: 11,
-        y: 15,
-        dir: "right"
-      },
-      {
-        x: 6,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 16,
-        dir: "up"
-      },
-      {
-        x: 9,
-        y: 16,
-        dir: "down"
-      },
-      {
-        x: 10,
-        y: 16,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 17,
-        dir: "down"
-      },
-      {
-        x: 9,
-        y: 17,
-        dir: "left"
-      },
-      {
-        x: 2,
-        y: 18,
-        dir: "left"
-      },
-      {
-        x: 5,
-        y: 18,
-        dir: "left"
-      },
-      {
-        x: 8,
-        y: 18,
-        dir: "left"
-      }
+      { x: 3, y: 4, dir: "down" },
+      { x: 6, y: 9, dir: "down" },
+      { x: 9, y: 8, dir: "right" },
+      { x: 7, y: 9, dir: "up" },
+      { x: 4, y: 9, dir: "up" },
+      { x: 7, y: 12, dir: "right" },
+      { x: 3, y: 9, dir: "down" },
+      { x: 9, y: 9, dir: "right" },
+      { x: 6, y: 11, dir: "right" },
+      { x: 6, y: 7, dir: "down" },
+      { x: 5, y: 9, dir: "down" },
+      { x: 9, y: 7, dir: "left" },
+      { x: 8, y: 13, dir: "down" },
+      { x: 4, y: 7, dir: "left" },
+      { x: 4, y: 6, dir: "right" },
+      { x: 9, y: 5, dir: "down" },
+      { x: 11, y: 9, dir: "right" },
+      { x: 5, y: 10, dir: "left" },
+      { x: 2, y: 6, dir: "down" },
+      { x: 11, y: 11, dir: "down" },
+      { x: 4, y: 5, dir: "right" },
+      { x: 11, y: 13, dir: "down" },
+      { x: 8, y: 5, dir: "down" },
+      { x: 11, y: 8, dir: "down" },
+      { x: 3, y: 11, dir: "right" },
+      { x: 8, y: 7, dir: "down" },
+      { x: 2, y: 8, dir: "right" },
+      { x: 9, y: 13, dir: "down" },
+      { x: 10, y: 12, dir: "up" },
+      { x: 8, y: 10, dir: "left" },
+      { x: 6, y: 4, dir: "down" },
+      { x: 1, y: 14, dir: "right" },
+      { x: 0, y: 12, dir: "down" },
+      { x: 9, y: 11, dir: "right" },
+      { x: 1, y: 9, dir: "right" },
+      { x: 4, y: 11, dir: "up" },
+      { x: 10, y: 5, dir: "up" },
+      { x: 3, y: 12, dir: "right" },
+      { x: 5, y: 13, dir: "down" },
+      { x: 2, y: 7, dir: "left" },
+      { x: 7, y: 5, dir: "right" },
+      { x: 5, y: 6, dir: "down" },
+      { x: 2, y: 2, dir: "down" },
+      { x: 6, y: 13, dir: "left" },
+      { x: 5, y: 0, dir: "right" },
+      { x: 8, y: 1, dir: "left" },
+      { x: 6, y: 1, dir: "down" },
+      { x: 11, y: 5, dir: "down" },
+      { x: 7, y: 6, dir: "up" },
+      { x: 2, y: 10, dir: "left" },
+      { x: 4, y: 2, dir: "right" },
+      { x: 6, y: 2, dir: "right" },
+      { x: 4, y: 4, dir: "left" },
+      { x: 8, y: 16, dir: "left" },
+      { x: 7, y: 14, dir: "up" },
+      { x: 10, y: 10, dir: "up" },
+      { x: 10, y: 1, dir: "up" },
+      { x: 8, y: 2, dir: "right" },
+      { x: 1, y: 2, dir: "right" },
+      { x: 8, y: 15, dir: "down" },
+      { x: 5, y: 15, dir: "down" },
+      { x: 10, y: 14, dir: "up" },
+      { x: 5, y: 3, dir: "right" },
+      { x: 4, y: 15, dir: "right" },
+      { x: 1, y: 6, dir: "right" },
+      { x: 4, y: 14, dir: "right" },
+      { x: 2, y: 16, dir: "down" },
+      { x: 10, y: 3, dir: "up" },
+      { x: 5, y: 17, dir: "right" },
+      { x: 6, y: 16, dir: "down" },
+      { x: 0, y: 7, dir: "left" },
+      { x: 3, y: 16, dir: "left" },
+      { x: 4, y: 1, dir: "left" },
+      { x: 1, y: 3, dir: "right" },
+      { x: 2, y: 4, dir: "down" },
+      { x: 9, y: 17, dir: "right" },
+      { x: 10, y: 16, dir: "left" },
+      { x: 7, y: 17, dir: "right" },
+      { x: 0, y: 4, dir: "left" },
+      { x: 9, y: 15, dir: "down" },
     ]
   }
 ];
+
+const EDITOR_LEVELS_STORAGE_KEY = "pigEscapeEditorDeployedLevelsV1";
+
+function getGameLevels() {
+  try {
+    const raw = window.localStorage.getItem(EDITOR_LEVELS_STORAGE_KEY);
+    if (!raw) return LEVELS;
+    const levels = JSON.parse(raw);
+    return Array.isArray(levels) && levels.length > 0 ? levels : LEVELS;
+  } catch (error) {
+    return LEVELS;
+  }
+}
 
 const state = {
   levelIndex: 0,
@@ -4582,7 +1310,13 @@ const state = {
   starThresholds: [0, 0, 0],
   bestByLevel: loadProgress(),
   locked: false,
+  runToken: 0,
   toolMode: null,
+  undoSnapshot: null,
+  toolUses: {
+    remove: 0,
+    undo: 0,
+  },
 };
 
 const PIG_MARKUP = `
@@ -4621,20 +1355,28 @@ const nextLevelBtn = document.querySelector("#nextLevelBtn");
 const toast = document.querySelector("#toast");
 const restartBtn = document.querySelector("#restartBtn");
 const removeTool = document.querySelector("#removeTool");
+const undoTool = document.querySelector("#undoTool");
 const startGameBtn = document.querySelector("#startGameBtn");
 const startTotalStars = document.querySelector("#startTotalStars");
 const startClearedLevels = document.querySelector("#startClearedLevels");
 
 function initLevel(index = 0) {
-  const levelIndex = Math.max(0, Math.min(index, LEVELS.length - 1));
-  const level = LEVELS[levelIndex];
+  const levels = getGameLevels();
+  const levelIndex = Math.max(0, Math.min(index, levels.length - 1));
+  const level = levels[levelIndex];
   state.levelIndex = levelIndex;
   state.cleared = 0;
   state.combo = 0;
   state.score = 0;
   state.starThresholds = getStarThresholds(level);
   state.locked = false;
+  state.runToken += 1;
   state.toolMode = null;
+  state.undoSnapshot = null;
+  state.toolUses = {
+    remove: 0,
+    undo: 0,
+  };
   state.animals = level.animals.map((animal, animalIndex) => ({
     ...animal,
     type: animal.type ?? level.animalType ?? "pig",
@@ -4655,6 +1397,7 @@ function initLevel(index = 0) {
   renderLevelSelect();
   levelSelect.value = String(levelIndex);
   targetCount.textContent = `/ ${state.animals.length}`;
+  clearPathRunners();
   render();
   updateHud();
   hideComboBurst();
@@ -4703,6 +1446,13 @@ function handleAnimalClick(id, element) {
   playAnimalTapFeedback(element);
 
   if (state.toolMode === "remove") {
+    if (!canUseTool("remove")) {
+      setToolMode(null);
+      showToast("移除道具已用完");
+      return;
+    }
+    saveUndoSnapshot();
+    state.toolUses.remove += 1;
     removeAnimal(animal, element);
     setToolMode(null);
     showToast("已移除一只小猪");
@@ -4760,6 +1510,7 @@ function renderPlayArea() {
 
 function tryMove(animal, element) {
   const blocker = findBlocker(animal);
+  saveUndoSnapshot();
   if (blocker) {
     resetCombo();
     updateHud();
@@ -4812,11 +1563,17 @@ function exitAnimal(animal, element) {
   const animalType = getAnimalType(animal);
   const cellsToEdge = getExitTravelCells(animal);
   const moveMs = getMoveDuration(animalType, cellsToEdge);
+  const center = getAnimalCenter(animal);
+  const pathStart = {
+    x: center.x + dir.dx * cellsToEdge,
+    y: center.y + dir.dy * cellsToEdge,
+  };
+  const pathEntry = getPathEntryPoint(pathStart, animal.dir);
+  const runToken = state.runToken;
 
   setMotion(element, moveMs, MOVE_EASING.run);
   setRunOffset(element, dir, cellsToEdge);
   element.classList.add("is-leaving", "is-running");
-  const center = getAnimalCenter(animal);
   spawnRunTrail(center, dir, cellsToEdge, animalType);
 
   animal.active = false;
@@ -4825,9 +1582,158 @@ function exitAnimal(animal, element) {
   updateHud();
 
   window.setTimeout(() => {
+    if (runToken !== state.runToken) return;
+    const runner = createPathRunner(element, pathEntry, animal.dir);
     element.remove();
-    checkLevelComplete();
+    runPathToGate(runner, pathEntry, animal.dir, animalType, runToken);
   }, moveMs);
+}
+
+function clearPathRunners() {
+  document.querySelectorAll(".path-runner").forEach((runner) => runner.remove());
+}
+
+function createPathRunner(sourceElement, start, dirKey) {
+  const runner = sourceElement.cloneNode(true);
+  runner.classList.remove(
+    "is-leaving",
+    "is-crashing",
+    "is-stunned",
+    "is-removed",
+    "is-blocked",
+    "is-pressing",
+    "is-activated",
+  );
+  runner.classList.add("path-runner", "is-running");
+  runner.type = "button";
+  runner.disabled = true;
+  runner.removeAttribute("data-id");
+  runner.setAttribute("aria-label", `小猪朝${DIRS[dirKey].label}`);
+  setPathRunnerPoint(runner, start, 0);
+  document.body.appendChild(runner);
+  return runner;
+}
+
+async function runPathToGate(runner, start, dirKey, animalType, runToken) {
+  const route = getPathExitRoute(start, dirKey);
+  let current = route[0];
+
+  for (let index = 1; index < route.length; index += 1) {
+    if (runToken !== state.runToken || !runner.isConnected) return;
+    const next = route[index];
+    await movePathRunner(runner, current, next, animalType);
+    current = next;
+    if (PATH_EXIT.turnPauseMs > 0) {
+      await wait(PATH_EXIT.turnPauseMs);
+    }
+  }
+
+  if (runToken !== state.runToken || !runner.isConnected) return;
+  runner.classList.add("is-path-disappearing");
+  window.setTimeout(() => {
+    if (runToken !== state.runToken) return;
+    runner.remove();
+    checkLevelComplete();
+  }, PATH_EXIT.fadeMs);
+}
+
+async function movePathRunner(runner, from, to, animalType) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const cells = Math.hypot(dx, dy);
+  const durationMs = Math.max(80, getMoveDuration(animalType, cells));
+  const segmentDir = getPathSegmentDir(dx, dy);
+
+  runner.setAttribute("aria-label", `小猪朝${DIRS[segmentDir].label}`);
+  setMotion(runner, durationMs, MOVE_EASING.run);
+  spawnPathRunTrail(from, DIRS[segmentDir], cells, animalType);
+  await waitForNextFrame();
+  setPathRunnerPoint(runner, to, durationMs);
+  await wait(durationMs);
+}
+
+function getPathExitRoute(start, dirKey) {
+  const offset = PATH_EXIT.roadOffsetCells;
+  const topY = PATH_EXIT.gateYCells;
+  const bottomY = BOARD.rows + offset;
+  const leftX = -offset;
+  const rightX = BOARD.cols + offset;
+  const gate = { x: BOARD.cols / 2, y: topY };
+  const outsideGate = { x: gate.x, y: PATH_EXIT.gateExitYCells };
+  const route = [start];
+
+  if (dirKey === "up") {
+    pushRoutePoint(route, { x: start.x, y: topY });
+  } else if (dirKey === "left") {
+    pushRoutePoint(route, { x: leftX, y: start.y });
+    pushRoutePoint(route, { x: leftX, y: topY });
+  } else if (dirKey === "right") {
+    pushRoutePoint(route, { x: rightX, y: start.y });
+    pushRoutePoint(route, { x: rightX, y: topY });
+  } else {
+    const sideX = start.x <= gate.x ? leftX : rightX;
+    pushRoutePoint(route, { x: start.x, y: bottomY });
+    pushRoutePoint(route, { x: sideX, y: bottomY });
+    pushRoutePoint(route, { x: sideX, y: topY });
+  }
+
+  pushRoutePoint(route, gate);
+  pushRoutePoint(route, outsideGate);
+  return route;
+}
+
+function getPathEntryPoint(start, dirKey) {
+  const offset = PATH_EXIT.roadOffsetCells;
+  if (dirKey === "up") {
+    return { x: start.x, y: PATH_EXIT.gateYCells };
+  }
+  if (dirKey === "down") {
+    return { x: start.x, y: BOARD.rows + offset };
+  }
+  if (dirKey === "left") {
+    return { x: -offset, y: start.y };
+  }
+  return { x: BOARD.cols + offset, y: start.y };
+}
+
+function pushRoutePoint(route, point) {
+  const previous = route[route.length - 1];
+  if (Math.hypot(point.x - previous.x, point.y - previous.y) < 0.05) return;
+  route.push(point);
+}
+
+function getPathSegmentDir(dx, dy) {
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0 ? "right" : "left";
+  }
+  return dy >= 0 ? "down" : "up";
+}
+
+function setPathRunnerPoint(runner, point, durationMs) {
+  const screenPoint = getPastureScreenPoint(point);
+  runner.style.setProperty("--path-left", `${screenPoint.x}px`);
+  runner.style.setProperty("--path-top", `${screenPoint.y}px`);
+  runner.style.setProperty("--move-ms", `${durationMs}ms`);
+}
+
+function getPastureScreenPoint(point) {
+  const rect = pasture.getBoundingClientRect();
+  return {
+    x: rect.left + point.x * (rect.width / BOARD.cols),
+    y: rect.top + point.y * (rect.height / BOARD.rows),
+  };
+}
+
+function wait(durationMs) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, durationMs);
+  });
+}
+
+function waitForNextFrame() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
+  });
 }
 
 function removeAnimal(animal, element) {
@@ -4879,9 +1785,6 @@ function crashAnimal(animal, element, blocker) {
   window.setTimeout(() => {
     setMotion(element, settleMs, MOVE_EASING.crashSettle);
     setRunOffset(element, dir, travelCells);
-    const crashX = center.x + dir.dx * (travelCells + 0.62);
-    const crashY = center.y + dir.dy * (travelCells + 0.62);
-    spawnCrashStars(crashX, crashY, animalType);
   }, travelMs + bumpMs);
 
   window.setTimeout(() => {
@@ -4952,14 +1855,28 @@ function spawnRunTrail(center, dir, cells, animalType, msPerCell = animalType.mo
   }
 }
 
-function spawnCrashStars(x, y, animalType) {
-  const stars = document.createElement("span");
-  stars.className = "effect-stars";
-  stars.style.setProperty("--x", x);
-  stars.style.setProperty("--y", y);
-  stars.style.setProperty("--stun-color", animalType.stunColor);
-  pasture.appendChild(stars);
-  window.setTimeout(() => stars.remove(), 760);
+function spawnPathRunTrail(center, dir, cells, animalType) {
+  const count = Math.max(1, Math.ceil(cells / animalType.trailEveryCells));
+  const side = { x: -dir.dy, y: dir.dx };
+  for (let index = 0; index < count; index += 1) {
+    const step = Math.min(cells, index * animalType.trailEveryCells);
+    const delay = getMoveDuration(animalType, step);
+    window.setTimeout(() => {
+      const trail = document.createElement("span");
+      const sideOffset = index % 2 === 0 ? -0.18 : 0.18;
+      const point = getPastureScreenPoint({
+        x: center.x + dir.dx * step + side.x * sideOffset,
+        y: center.y + dir.dy * step + side.y * sideOffset,
+      });
+      trail.className = "effect-trail effect-trail-path";
+      trail.style.setProperty("--screen-x", `${point.x}px`);
+      trail.style.setProperty("--screen-y", `${point.y}px`);
+      trail.style.setProperty("--trail-color", animalType.trailColor);
+      trail.style.setProperty("--dust-scale", index % 3 === 0 ? "0.5" : "0.36");
+      document.body.appendChild(trail);
+      window.setTimeout(() => trail.remove(), 620);
+    }, delay);
+  }
 }
 
 function getFootprint(animal) {
@@ -5043,6 +1960,7 @@ function updateHud() {
   scoreCount.textContent = state.score;
   starTarget.textContent = `3★${formatScoreShort(state.starThresholds[2])}`;
   totalStarsCount.textContent = getTotalStars();
+  updateUndoState();
 }
 
 function showLevelCompleteModal(stars) {
@@ -5060,7 +1978,7 @@ function showLevelCompleteModal(stars) {
   completeStars.style.setProperty("--star-progress", `${(stars - 1) * 36}%`);
   completeStars.setAttribute("aria-label", `本关获得${stars}星`);
   completeScore.textContent = `${state.score}分`;
-  const hasNextLevel = state.levelIndex + 1 < LEVELS.length;
+  const hasNextLevel = state.levelIndex + 1 < getGameLevels().length;
   nextLevelBtn.disabled = !hasNextLevel;
   levelCompleteModal.hidden = false;
 }
@@ -5076,7 +1994,11 @@ function addExitScore() {
 }
 
 function getExitScoreForCombo(combo) {
-  return SCORE_RULES.exitBase + Math.max(0, combo - 1) * SCORE_RULES.comboBonus;
+  const comboStep = Math.max(0, combo - 1);
+  const earlyBonus = Math.min(comboStep, 9) * SCORE_RULES.comboBonusEarly;
+  const midBonus = Math.min(Math.max(0, comboStep - 9), 10) * SCORE_RULES.comboBonusMid;
+  const lateBonus = Math.max(0, comboStep - 19) * SCORE_RULES.comboBonusLate;
+  return SCORE_RULES.exitBase + earlyBonus + midBonus + lateBonus;
 }
 
 function resetCombo() {
@@ -5127,30 +2049,44 @@ function showComboBreak() {
 
 function getStarThresholds(level) {
   if (level.starThresholds) return level.starThresholds;
+  const threeStarScore = roundScoreThreshold(
+    level.animals.length * getAverageScorePerAnimal(
+      getThreeStarAverageCombo(level),
+    ),
+  );
+  const twoStarScore = Math.min(
+    roundScoreThreshold(threeStarScore * STAR_RULES.twoStarRatio),
+    threeStarScore - STAR_RULES.roundTo,
+  );
   return [
     0,
-    roundScoreThreshold(
-      level.animals.length * getAverageScorePerAnimal(
-        STAR_RULES.twoStarAverageCombo,
-      ),
-    ),
-    getPerfectScore(level.animals.length),
+    twoStarScore,
+    threeStarScore,
   ];
 }
 
+function getThreeStarAverageCombo(level) {
+  const levels = getGameLevels();
+  const levelIndex = levels.findIndex((item) => item === level);
+  if (levelIndex >= 0) {
+    return (
+      STAR_RULES.threeStarAverageComboByLevel[levelIndex] ??
+      STAR_RULES.fallbackThreeStarAverageCombo
+    );
+  }
+  return STAR_RULES.fallbackThreeStarAverageCombo;
+}
+
 function getAverageScorePerAnimal(averageCombo) {
-  return SCORE_RULES.exitBase + ((averageCombo - 1) * SCORE_RULES.comboBonus) / 2;
+  let scoreTotal = 0;
+  for (let combo = 1; combo <= averageCombo; combo += 1) {
+    scoreTotal += getExitScoreForCombo(combo);
+  }
+  return scoreTotal / averageCombo;
 }
 
 function roundScoreThreshold(score) {
   return Math.round(score / STAR_RULES.roundTo) * STAR_RULES.roundTo;
-}
-
-function getPerfectScore(animalCount) {
-  return (
-    animalCount * SCORE_RULES.exitBase +
-    (SCORE_RULES.comboBonus * animalCount * (animalCount - 1)) / 2
-  );
 }
 
 function getEarnedStars(score, thresholds, isComplete = false) {
@@ -5172,7 +2108,8 @@ function formatScoreShort(score) {
 
 function renderLevelSelect() {
   const firstUnclearedLevelIndex = getFirstUnclearedLevelIndex();
-  const options = LEVELS.map((level, index) => ({ level, index })).filter(
+  const levels = getGameLevels();
+  const options = levels.map((level, index) => ({ level, index })).filter(
     ({ index }) => isLevelVisible(index, firstUnclearedLevelIndex),
   );
 
@@ -5186,21 +2123,24 @@ function renderLevelSelect() {
 function isLevelVisible(index, firstUnclearedLevelIndex = getFirstUnclearedLevelIndex()) {
   if (index === state.levelIndex) return true;
   if (index === 0) return true;
-  const level = LEVELS[index];
+  const levels = getGameLevels();
+  const level = levels[index];
   if ((state.bestByLevel[level.id]?.stars ?? 0) > 0) return true;
   return isLevelUnlocked(index) && index === firstUnclearedLevelIndex;
 }
 
 function isLevelUnlocked(index) {
   if (index === 0) return true;
-  return (state.bestByLevel[LEVELS[index - 1].id]?.stars ?? 0) > 0;
+  const levels = getGameLevels();
+  return (state.bestByLevel[levels[index - 1].id]?.stars ?? 0) > 0;
 }
 
 function getFirstUnclearedLevelIndex() {
-  const index = LEVELS.findIndex(
+  const levels = getGameLevels();
+  const index = levels.findIndex(
     (level) => (state.bestByLevel[level.id]?.stars ?? 0) === 0,
   );
-  return index === -1 ? LEVELS.length - 1 : index;
+  return index === -1 ? levels.length - 1 : index;
 }
 
 function loadProgress() {
@@ -5223,7 +2163,7 @@ function saveProgress() {
 }
 
 function saveLevelResult(levelIndex, score, stars) {
-  const level = LEVELS[levelIndex];
+  const level = getGameLevels()[levelIndex];
   const previous = state.bestByLevel[level.id] ?? { stars: 0, score: 0 };
   state.bestByLevel[level.id] = {
     stars: Math.max(previous.stars, stars),
@@ -5261,8 +2201,18 @@ levelSelect.addEventListener("change", () => {
 });
 
 removeTool.addEventListener("click", () => {
+  if (state.locked) return;
+  if (!canUseTool("remove")) {
+    setToolMode(null);
+    showToast("移除道具已用完");
+    return;
+  }
   setToolMode(state.toolMode === "remove" ? null : "remove");
   showToast(state.toolMode === "remove" ? "选择一只小猪移除" : "已取消移除");
+});
+
+undoTool.addEventListener("click", () => {
+  undoLastAction();
 });
 
 replayLevelBtn.addEventListener("click", () => {
@@ -5270,7 +2220,7 @@ replayLevelBtn.addEventListener("click", () => {
 });
 
 nextLevelBtn.addEventListener("click", () => {
-  if (state.levelIndex + 1 >= LEVELS.length) return;
+  if (state.levelIndex + 1 >= getGameLevels().length) return;
   initLevel(state.levelIndex + 1);
 });
 
@@ -5281,16 +2231,85 @@ startGameBtn.addEventListener("click", () => {
 
 function setToolMode(mode) {
   state.toolMode = mode;
+  if (mode && !canUseTool(mode)) state.toolMode = null;
   updateToolState();
 }
 
 function updateToolState() {
   pasture.classList.toggle("is-targeting", Boolean(state.toolMode));
   removeTool.classList.toggle("is-selected", state.toolMode === "remove");
+  removeTool.disabled = state.locked || !canUseTool("remove");
   removeTool.setAttribute(
     "aria-pressed",
     state.toolMode === "remove" ? "true" : "false",
   );
+  removeTool.querySelector(".tool-count").textContent =
+    `${getToolUsesLeft("remove")}/${TOOL_LIMITS.remove}`;
+  updateUndoState();
+}
+
+function saveUndoSnapshot() {
+  state.undoSnapshot = {
+    cleared: state.cleared,
+    combo: state.combo,
+    score: state.score,
+    toolUses: { ...state.toolUses },
+    animals: state.animals.map((animal) => ({
+      ...animal,
+      active: animal.active,
+      busy: false,
+      stunned: animal.stunned,
+    })),
+  };
+  updateUndoState();
+}
+
+function undoLastAction() {
+  if (state.locked || !state.undoSnapshot || !canUseTool("undo")) {
+    showToast("暂无可撤销操作");
+    return;
+  }
+
+  const snapshot = state.undoSnapshot;
+  const nextUndoUses = state.toolUses.undo + 1;
+  state.cleared = snapshot.cleared;
+  state.combo = snapshot.combo;
+  state.score = snapshot.score;
+  state.toolMode = null;
+  state.undoSnapshot = null;
+  state.toolUses = {
+    ...snapshot.toolUses,
+    undo: nextUndoUses,
+  };
+  state.animals = snapshot.animals.map((animal) => ({ ...animal, busy: false }));
+  state.animalById = new Map(state.animals.map((animal) => [animal.id, animal]));
+  state.runToken += 1;
+  clearPathRunners();
+
+  hideLevelCompleteModal();
+  if (state.combo >= 5) {
+    showComboBurst(state.combo);
+  } else {
+    hideComboBurst();
+  }
+  render();
+  updateHud();
+  updateToolState();
+  showToast("已撤销上一步");
+}
+
+function updateUndoState() {
+  undoTool.disabled = state.locked || !state.undoSnapshot || !canUseTool("undo");
+  undoTool.querySelector(".tool-count").textContent =
+    `${getToolUsesLeft("undo")}/${TOOL_LIMITS.undo}`;
+}
+
+function canUseTool(tool) {
+  return (state.toolUses[tool] ?? 0) < TOOL_LIMITS[tool];
+}
+
+function getToolUsesLeft(tool) {
+  return Math.max(0, TOOL_LIMITS[tool] - (state.toolUses[tool] ?? 0));
 }
 
 function getCellKey(cell) {
@@ -5308,7 +2327,7 @@ function isSameAnimal(first, second) {
 
 function renderStartScreen() {
   startTotalStars.textContent = getTotalStars();
-  const clearedLevels = LEVELS.filter(
+  const clearedLevels = getGameLevels().filter(
     (level) => (state.bestByLevel[level.id]?.stars ?? 0) > 0,
   ).length;
   startClearedLevels.textContent = clearedLevels;
