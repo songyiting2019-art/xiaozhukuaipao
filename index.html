@@ -14,11 +14,11 @@
           <h1 id="startTitle">小猪快跑</h1>
           <p class="start-copy">点小猪，拆开阻挡，把它们送回农场小屋。</p>
           <div class="start-stats" aria-label="玩家进度">
-            <div>
+            <button class="start-stat-card" id="startStarsButton" type="button" aria-label="查看道具解锁">
               <span class="start-stat-label">总星数</span>
               <strong class="start-stat-value"><span id="startTotalStars">0</span><span class="start-stat-unit">★</span></strong>
-            </div>
-            <div>
+            </button>
+            <div class="start-stat-card">
               <span class="start-stat-label">已通关</span>
               <strong class="start-stat-value"><span id="startClearedLevels">0</span><span class="start-stat-unit">关</span></strong>
             </div>
@@ -45,10 +45,10 @@
           <strong id="scoreCount">0</strong>
           <span class="score-target" id="starTarget">3★ 0</span>
         </div>
-        <div class="total-stars-pill" aria-label="总星数">
+        <button class="total-stars-pill" id="totalStarsButton" type="button" aria-label="查看道具解锁">
           <span>★</span>
           <strong id="totalStarsCount">0</strong>
-        </div>
+        </button>
         <div class="level-title" id="levelTitle">第1关</div>
       </section>
 
@@ -86,9 +86,21 @@
         </div>
       </section>
 
+      <section class="tool-unlock-modal" id="toolUnlockModal" aria-modal="true" role="dialog" aria-labelledby="toolUnlockTitle" hidden>
+        <div class="tool-unlock-panel">
+          <button class="modal-close-button" id="closeToolUnlockBtn" type="button" aria-label="关闭">×</button>
+          <h2 id="toolUnlockTitle">道具解锁</h2>
+          <div class="tool-unlock-stars">
+            <span>当前星数</span>
+            <strong id="toolUnlockStarCount">0★</strong>
+          </div>
+          <div class="tool-unlock-list" id="toolUnlockList"></div>
+        </div>
+      </section>
+
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </main>
 
-    <script src="./game.js?v=level-2-pig-1"></script>
+    <script src="./game.js?v=tool-unlock-1"></script>
   </body>
 </html>

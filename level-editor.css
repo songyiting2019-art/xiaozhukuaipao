@@ -29,7 +29,7 @@
 
 .level-editor-page button,
 .level-editor-page select,
-.level-editor-page textarea {
+.level-editor-page input {
   font: inherit;
 }
 
@@ -82,9 +82,9 @@
 
 .level-editor-topbar {
   display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(270px, 1fr) auto;
-  gap: 12px;
-  align-items: end;
+  grid-template-columns: minmax(160px, 260px) auto 1fr;
+  gap: 10px;
+  align-items: center;
   padding: 14px;
   border: 1px solid var(--editor-line);
   border-radius: 8px;
@@ -93,16 +93,14 @@
 }
 
 .editor-field,
-.editor-tool-group,
-.editor-output-field {
+.editor-tool-group {
   display: grid;
   gap: 7px;
   min-width: 0;
 }
 
 .editor-field span,
-.editor-tool-group > span,
-.editor-output-field > span {
+.editor-tool-group > span {
   color: var(--editor-muted);
   font-size: 12px;
   font-weight: 800;
@@ -119,11 +117,51 @@
   font-weight: 800;
 }
 
+.editor-count-field {
+  display: inline-grid;
+  grid-template-columns: auto 42px;
+  gap: 6px;
+  align-items: center;
+  justify-self: start;
+  height: 36px;
+  border: 1px solid var(--editor-line);
+  border-radius: 8px;
+  padding: 0 7px 0 9px;
+  color: var(--editor-text);
+  background: var(--editor-panel-soft);
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.editor-count-field::before {
+  content: "小猪";
+  color: var(--editor-muted);
+  font-size: 12px;
+}
+
+.editor-count-field span {
+  display: none;
+}
+
+.editor-count-field input {
+  width: 42px;
+  height: 26px;
+  border: 1px solid var(--editor-line-strong);
+  border-radius: 6px;
+  padding: 0 4px;
+  color: var(--editor-text);
+  background: #fff;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 850;
+}
+
 .editor-dir-row,
 .editor-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  justify-content: end;
 }
 
 .editor-chip {
@@ -138,6 +176,13 @@
   font-weight: 850;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   cursor: pointer;
+}
+
+.editor-chip:disabled {
+  color: var(--editor-muted);
+  background: #f1f5f9;
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .editor-chip:hover,
@@ -162,14 +207,14 @@
 
 .level-editor-main {
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(310px, 1fr);
+  grid-template-columns: minmax(0, auto);
   gap: 16px;
   align-items: start;
+  justify-content: start;
   min-height: 0;
 }
 
-.editor-board-wrap,
-.level-editor-side {
+.editor-board-wrap {
   border: 1px solid var(--editor-line);
   border-radius: 8px;
   background: var(--editor-panel);
@@ -238,104 +283,70 @@
 }
 
 .editor-grid-cell.is-outside {
-  background: rgba(148, 163, 184, 0.13);
+  background: transparent;
+  cursor: default;
+  pointer-events: none;
 }
 
 .editor-board .pig {
   pointer-events: none;
 }
 
-.level-editor-side {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
+.editor-board .pig.is-selected .pig-shape {
+  filter:
+    drop-shadow(0 0 0.5px #ffffff)
+    drop-shadow(0 0 8px rgba(37, 99, 235, 0.9))
+    drop-shadow(3px 5px 4px rgba(90, 61, 36, 0.13));
 }
 
-.editor-status {
-  display: grid;
-  gap: 10px;
-  min-height: 72px;
-  padding: 0;
-  color: var(--editor-text);
-  background: transparent;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.45;
+.editor-board .pig.is-inspection-target .pig-shape {
+  filter:
+    drop-shadow(0 0 0.5px #ffffff)
+    drop-shadow(0 0 8px rgba(37, 99, 235, 0.9))
+    drop-shadow(3px 5px 4px rgba(90, 61, 36, 0.13));
 }
 
-.editor-status-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+.editor-board .pig.is-deadzone-risk .pig-shape {
+  filter:
+    drop-shadow(0 0 1px #ffffff)
+    drop-shadow(0 0 0 #facc15)
+    drop-shadow(0 0 10px rgba(250, 204, 21, 0.95))
+    drop-shadow(0 0 18px rgba(234, 179, 8, 0.82))
+    drop-shadow(3px 5px 4px rgba(90, 61, 36, 0.13));
 }
 
-.editor-stat {
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid var(--editor-line);
-  border-radius: 8px;
-  background: var(--editor-panel-soft);
+.editor-board .pig.is-collision-risk .pig-shape {
+  filter:
+    drop-shadow(0 0 1px #ffffff)
+    drop-shadow(0 0 0 #ef4444)
+    drop-shadow(0 0 11px rgba(239, 68, 68, 0.98))
+    drop-shadow(0 0 20px rgba(185, 28, 28, 0.9))
+    drop-shadow(3px 5px 4px rgba(90, 61, 36, 0.13));
 }
 
-.editor-stat span {
-  display: block;
-  color: var(--editor-muted);
-  font-size: 11px;
+.editor-board .pig.is-deadzone-risk::after,
+.editor-board .pig.is-collision-risk::after {
+  position: absolute;
+  inset: -7px;
+  content: "";
+  border: 3px solid #facc15;
+  border-radius: 999px;
+  pointer-events: none;
 }
 
-.editor-stat strong {
-  display: block;
-  margin-top: 3px;
-  font-size: 20px;
-  line-height: 1;
+.editor-board .pig.is-collision-risk::after {
+  border-color: #ef4444;
 }
 
-.editor-risk-list {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.editor-board .pig.is-invalid {
+  opacity: 0.55;
 }
 
-.editor-risk-list li {
-  padding: 8px 10px;
-  border: 1px solid var(--editor-line);
-  border-radius: 8px;
-  background: var(--editor-panel-soft);
-}
-
-.editor-risk-list .is-ok {
-  border-color: rgba(21, 128, 61, 0.28);
-  color: var(--editor-ok);
-  background: rgba(220, 252, 231, 0.58);
-}
-
-.editor-risk-list .is-warning {
-  border-color: rgba(180, 83, 9, 0.28);
-  color: var(--editor-warning);
-  background: rgba(254, 243, 199, 0.72);
-}
-
-.editor-risk-list .is-danger {
-  border-color: rgba(220, 38, 38, 0.28);
-  color: var(--editor-danger);
-  background: rgba(254, 226, 226, 0.7);
-}
-
-.editor-output {
-  width: 100%;
-  min-height: 410px;
-  height: calc(100dvh - 390px);
-  resize: vertical;
-  border: 1px solid var(--editor-line-strong);
-  border-radius: 8px;
-  padding: 12px;
-  color: #1e293b;
-  background: #0f172a;
-  color: #e2e8f0;
-  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  tab-size: 2;
+.editor-board .pig.is-invalid .pig-shape {
+  filter:
+    grayscale(0.25)
+    drop-shadow(0 0 8px rgba(220, 38, 38, 0.95))
+    drop-shadow(3px 5px 4px rgba(90, 61, 36, 0.13));
 }
 
 @media (max-width: 920px) {
@@ -375,12 +386,7 @@
   }
 
   .level-editor-topbar,
-  .editor-board-wrap,
-  .level-editor-side {
+  .editor-board-wrap {
     padding: 10px;
-  }
-
-  .editor-status-summary {
-    grid-template-columns: 1fr;
   }
 }

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>小猪出栏 - 关卡后台编辑器</title>
     <link rel="stylesheet" href="./styles.css?v=game-clean-1" />
-    <link rel="stylesheet" href="./level-editor.css?v=1" />
+    <link rel="stylesheet" href="./level-editor.css?v=4" />
   </head>
   <body class="level-editor-page">
     <main class="level-editor-shell">
@@ -22,20 +22,16 @@
           <span>关卡</span>
           <select id="editorLevelSelect" aria-label="选择关卡"></select>
         </label>
-        <div class="editor-tool-group">
-          <span>朝向</span>
-          <div class="editor-dir-row" id="editorDirRow" aria-label="放置方向">
-            <button class="editor-chip is-selected" type="button" data-dir="up">上</button>
-            <button class="editor-chip" type="button" data-dir="right">右</button>
-            <button class="editor-chip" type="button" data-dir="down">下</button>
-            <button class="editor-chip" type="button" data-dir="left">左</button>
-          </div>
-        </div>
+        <label class="editor-count-field">
+          <span id="editorPigCount">0</span>
+          <input id="editorGenerateCount" type="number" min="1" max="90" step="1" value="30" inputmode="numeric" aria-label="生成小猪数量" />
+        </label>
         <div class="editor-actions" aria-label="编辑操作">
-          <button class="editor-chip" id="editorErase" type="button">删除</button>
           <button class="editor-chip" id="editorGenerate" type="button">生成</button>
-          <button class="editor-chip" id="editorClear" type="button">清空</button>
-          <button class="editor-chip editor-chip-primary" id="editorCopy" type="button">复制</button>
+          <button class="editor-chip" id="editorAddLevel" type="button">新增关卡</button>
+          <button class="editor-chip editor-chip-primary" id="editorDeploy" type="button">部署</button>
+          <button class="editor-chip" id="editorErase" type="button">删除</button>
+          <button class="editor-chip" id="editorRotate" type="button">旋转</button>
         </div>
       </section>
 
@@ -43,16 +39,9 @@
         <div class="editor-board-wrap">
           <div class="pasture editor-board" id="editorBoard" aria-label="关卡棋盘"></div>
         </div>
-        <aside class="level-editor-side">
-          <div class="editor-status" id="editorStatus">加载中</div>
-          <label class="editor-output-field">
-            <span>LEVELS 数据</span>
-            <textarea class="editor-output level-editor-output" id="editorOutput" readonly spellcheck="false"></textarea>
-          </label>
-        </aside>
       </section>
     </main>
 
-    <script src="./level-editor.js?v=2"></script>
+    <script src="./level-editor.js?v=12"></script>
   </body>
 </html>

@@ -52,6 +52,23 @@ const SCORE_RULES = {
   undoScore: -500,
 };
 
+const TOOL_UNLOCKS = {
+  remove: {
+    name: "移除",
+    description: "选择一只小猪直接移除。",
+    costText: "-1000分",
+    requiredStars: 0,
+    icon: "●",
+  },
+  undo: {
+    name: "撤销",
+    description: "回到上一步操作。",
+    costText: "-500分",
+    requiredStars: 3,
+    icon: "↶",
+  },
+};
+
 const STAR_RULES = {
   twoStarRatio: 0.68,
   threeStarAverageComboByLevel: [
@@ -124,7 +141,7 @@ const LEVELS = [
       { x: 6, y: 11, dir: "down" },
       { x: 4, y: 10, dir: "right" },
       { x: 3, y: 9, dir: "down" },
-      { x: 2, y: 8, dir: "right" },
+      { x: 1, y: 8, dir: "left" },
       { x: 1, y: 7, dir: "down" },
       { x: 5, y: 6, dir: "left" },
       { x: 5, y: 10, dir: "up" },
@@ -1353,8 +1370,14 @@ const restartBtn = document.querySelector("#restartBtn");
 const removeTool = document.querySelector("#removeTool");
 const undoTool = document.querySelector("#undoTool");
 const startGameBtn = document.querySelector("#startGameBtn");
+const startStarsButton = document.querySelector("#startStarsButton");
 const startTotalStars = document.querySelector("#startTotalStars");
 const startClearedLevels = document.querySelector("#startClearedLevels");
+const totalStarsButton = document.querySelector("#totalStarsButton");
+const toolUnlockModal = document.querySelector("#toolUnlockModal");
+const toolUnlockStarCount = document.querySelector("#toolUnlockStarCount");
+const toolUnlockList = document.querySelector("#toolUnlockList");
+const closeToolUnlockBtn = document.querySelector("#closeToolUnlockBtn");
 
 function initLevel(index = 0) {
   const levels = getGameLevels();
@@ -2163,6 +2186,7 @@ function saveLevelResult(levelIndex, score, stars) {
   saveProgress();
   renderLevelSelect();
   renderStartScreen();
+  updateToolState();
   levelSelect.value = String(levelIndex);
 }
 
@@ -2193,11 +2217,19 @@ levelSelect.addEventListener("change", () => {
 
 removeTool.addEventListener("click", () => {
   if (state.locked) return;
+  if (!isToolUnlocked("remove")) {
+    showToolLockedToast("remove");
+    return;
+  }
   setToolMode(state.toolMode === "remove" ? null : "remove");
   showToast(state.toolMode === "remove" ? "选择一只小猪移除" : "已取消移除");
 });
 
 undoTool.addEventListener("click", () => {
+  if (!isToolUnlocked("undo")) {
+    showToolLockedToast("undo");
+    return;
+  }
   undoLastAction();
 });
 
@@ -2212,7 +2244,25 @@ nextLevelBtn.addEventListener("click", () => {
 
 startGameBtn.addEventListener("click", () => {
   document.body.classList.remove("is-starting");
-  initLevel(DEFAULT_LEVEL_INDEX);
+  initLevel(getFirstUnclearedLevelIndex());
+});
+
+startStarsButton.addEventListener("click", () => {
+  openToolUnlockModal();
+});
+
+totalStarsButton.addEventListener("click", () => {
+  openToolUnlockModal();
+});
+
+closeToolUnlockBtn.addEventListener("click", () => {
+  hideToolUnlockModal();
+});
+
+toolUnlockModal.addEventListener("click", (event) => {
+  if (event.target === toolUnlockModal) {
+    hideToolUnlockModal();
+  }
 });
 
 function setToolMode(mode) {
@@ -2224,7 +2274,8 @@ function setToolMode(mode) {
 function updateToolState() {
   pasture.classList.toggle("is-targeting", Boolean(state.toolMode));
   removeTool.classList.toggle("is-selected", state.toolMode === "remove");
-  removeTool.disabled = state.locked;
+  removeTool.disabled = state.locked || !isToolUnlocked("remove");
+  removeTool.classList.toggle("is-locked", !isToolUnlocked("remove"));
   removeTool.setAttribute(
     "aria-pressed",
     state.toolMode === "remove" ? "true" : "false",
@@ -2285,14 +2336,32 @@ function undoLastAction() {
 }
 
 function updateUndoState() {
-  undoTool.disabled = state.locked || !state.undoSnapshot;
+  undoTool.disabled = state.locked || !state.undoSnapshot || !isToolUnlocked("undo");
+  undoTool.classList.toggle("is-locked", !isToolUnlocked("undo"));
   undoTool.querySelector(".tool-count").textContent = `${SCORE_RULES.undoScore}分`;
 }
 
 function canUseTool(tool) {
-  if (tool === "remove") return true;
-  if (tool === "undo") return true;
+  if (tool === "remove") return isToolUnlocked("remove");
+  if (tool === "undo") return isToolUnlocked("undo");
   return false;
+}
+
+function isToolUnlocked(tool) {
+  const unlock = TOOL_UNLOCKS[tool];
+  return Boolean(unlock) && getTotalStars() >= unlock.requiredStars;
+}
+
+function getToolStarsLeft(tool) {
+  const unlock = TOOL_UNLOCKS[tool];
+  if (!unlock) return 0;
+  return Math.max(0, unlock.requiredStars - getTotalStars());
+}
+
+function showToolLockedToast(tool) {
+  const unlock = TOOL_UNLOCKS[tool];
+  if (!unlock) return;
+  showToast(`${unlock.name}还差${getToolStarsLeft(tool)}★解锁`);
 }
 
 function getCellKey(cell) {
@@ -2314,6 +2383,40 @@ function renderStartScreen() {
     (level) => (state.bestByLevel[level.id]?.stars ?? 0) > 0,
   ).length;
   startClearedLevels.textContent = clearedLevels;
+  if (!toolUnlockModal.hidden) {
+    renderToolUnlockModal();
+  }
+}
+
+function openToolUnlockModal() {
+  renderToolUnlockModal();
+  toolUnlockModal.hidden = false;
+}
+
+function hideToolUnlockModal() {
+  toolUnlockModal.hidden = true;
+}
+
+function renderToolUnlockModal() {
+  const totalStars = getTotalStars();
+  toolUnlockStarCount.textContent = `${totalStars}★`;
+  toolUnlockList.innerHTML = Object.entries(TOOL_UNLOCKS).map(([key, tool]) => {
+    const unlocked = totalStars >= tool.requiredStars;
+    const starsLeft = Math.max(0, tool.requiredStars - totalStars);
+    return `
+      <article class="tool-unlock-item ${unlocked ? "is-unlocked" : "is-locked"}">
+        <span class="tool-unlock-icon" aria-hidden="true">${tool.icon}</span>
+        <div class="tool-unlock-copy">
+          <h3>${tool.name}</h3>
+          <p>${tool.description}</p>
+          <small>${tool.costText}</small>
+        </div>
+        <strong class="tool-unlock-state">
+          ${unlocked ? "已解锁" : `还差${starsLeft}★`}
+        </strong>
+      </article>
+    `;
+  }).join("");
 }
 
 renderStartScreen();
