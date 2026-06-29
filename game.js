@@ -8,7 +8,7 @@ const DIRS = {
 const ANIMAL_TYPES = {
   pig: {
     className: "animal-pig",
-    moveMsPerCell: 115,
+    moveMsPerCell: 105,
     crashMoveMsPerCell: 170,
     crashBumpMs: 160,
     stunMs: 620,
@@ -44,30 +44,123 @@ const CORNER_CUTOUT = {
 };
 
 const SCORE_RULES = {
-  exitBase: 100,
-  comboBonusEarly: 30,
-  comboBonusMid: 20,
-  comboBonusLate: 10,
+  comboScoreEarly: 5,
+  comboScoreMid: 10,
+  comboScoreLate: 15,
   removeScore: -1000,
   undoScore: -500,
 };
 
-const TOOL_UNLOCKS = {
+const TOOL_LIMITS = {
+  remove: 2,
+};
+
+const COLLECTION_UNLOCK_STEP = 5;
+
+const COLLECTION_ITEMS = {
   remove: {
     name: "移除",
+    type: "tool",
+    typeName: "道具",
     description: "选择一只小猪直接移除。",
-    costText: "-1000分",
+    guide: "点击移除任意一只小猪。",
+    costText: "每关2次",
     requiredStars: 0,
     icon: "●",
+    starter: true,
   },
-  undo: {
-    name: "撤销",
-    description: "回到上一步操作。",
-    costText: "-500分",
-    requiredStars: 3,
-    icon: "↶",
+  firecracker: {
+    name: "炮仗",
+    type: "ability",
+    typeName: "能力",
+    description: "让可直接出栏的小猪批量逃离。",
+    guide: "使用炮仗后，当前界面上前方没有阻挡的小猪会自动逃离。本次只判断点击时已经能逃离的小猪，不触发连锁反应。",
+    costText: "当前可逃",
+    requiredStars: 5,
+    icon: "!",
+    image: "./assets/optimized/firecracker-prop-96.png",
+  },
+  mysteryTool10: {
+    name: "神秘道具",
+    type: "tool",
+    typeName: "道具",
+    description: "后续配置新道具。",
+    guide: "这里会放后续新增的道具规则。",
+    costText: "待配置",
+    requiredStars: 10,
+    icon: "?",
+    placeholder: true,
+  },
+  mysteryTool15: {
+    name: "神秘道具",
+    type: "tool",
+    typeName: "道具",
+    description: "后续配置新道具。",
+    guide: "这里会放后续新增的道具规则。",
+    costText: "待配置",
+    requiredStars: 15,
+    icon: "?",
+    placeholder: true,
+  },
+  mysteryTool20: {
+    name: "神秘道具",
+    type: "tool",
+    typeName: "道具",
+    description: "后续配置新道具。",
+    guide: "这里会放后续新增的道具规则。",
+    costText: "待配置",
+    requiredStars: 20,
+    icon: "?",
+    placeholder: true,
+  },
+  mysteryTool25: {
+    name: "神秘道具",
+    type: "tool",
+    typeName: "道具",
+    description: "后续配置新道具。",
+    guide: "这里会放后续新增的道具规则。",
+    costText: "待配置",
+    requiredStars: 25,
+    icon: "?",
+    placeholder: true,
+  },
+  mysteryTool30: {
+    name: "神秘道具",
+    type: "tool",
+    typeName: "道具",
+    description: "后续配置新道具。",
+    guide: "这里会放后续新增的道具规则。",
+    costText: "待配置",
+    requiredStars: 30,
+    icon: "?",
+    placeholder: true,
+  },
+  mysteryTool35: {
+    name: "神秘道具",
+    type: "tool",
+    typeName: "道具",
+    description: "后续配置新道具。",
+    guide: "这里会放后续新增的道具规则。",
+    costText: "待配置",
+    requiredStars: 35,
+    icon: "?",
+    placeholder: true,
+  },
+  mysteryTool40: {
+    name: "神秘道具",
+    type: "tool",
+    typeName: "道具",
+    description: "后续配置新道具。",
+    guide: "这里会放后续新增的道具规则。",
+    costText: "待配置",
+    requiredStars: 40,
+    icon: "?",
+    placeholder: true,
   },
 };
+
+const TOOL_UNLOCKS = COLLECTION_ITEMS;
+const TOOL_UNLOCK_GRID_SIZE = 9;
 
 const STAR_RULES = {
   twoStarRatio: 0.68,
@@ -81,7 +174,13 @@ const STAR_RULES = {
 };
 
 const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV1";
+const FIRECRACKER_POSITION_KEY = "pigEscapeFirecrackerPositionV1";
+const EQUIPPED_SKIN_STORAGE_KEY = "pigEscapeEquippedSkinV1";
+const UNLOCKED_COLLECTION_STORAGE_KEY = "pigEscapeUnlockedCollectionV1";
+const ENABLED_ABILITIES_STORAGE_KEY = "pigEscapeEnabledAbilitiesV1";
+const EQUIPPED_TOOLS_STORAGE_KEY = "pigEscapeEquippedToolsV1";
 const DEFAULT_LEVEL_INDEX = 0;
+const MAX_EQUIPPED_TOOLS = 2;
 
 const LEVELS = [
   {
@@ -1297,6 +1396,271 @@ const LEVELS = [
       { x: 0, y: 4, dir: "left" },
       { x: 9, y: 15, dir: "down" },
     ]
+  },
+  {
+    id: 16,
+    name: "第16关",
+    animalType: "pig",
+    playArea: {
+      x: 0,
+      y: 0,
+      cols: 12,
+      rows: 19
+    },
+    animals: [
+      { x: 7, y: 1, dir: "up" },
+      { x: 3, y: 16, dir: "left" },
+      { x: 2, y: 2, dir: "down" },
+      { x: 4, y: 0, dir: "up" },
+      { x: 8, y: 1, dir: "left" },
+      { x: 11, y: 2, dir: "right" },
+      { x: 8, y: 0, dir: "right" },
+      { x: 7, y: 8, dir: "right" },
+      { x: 6, y: 9, dir: "right" },
+      { x: 6, y: 1, dir: "down" },
+      { x: 10, y: 8, dir: "right" },
+      { x: 3, y: 2, dir: "down" },
+      { x: 6, y: 7, dir: "left" },
+      { x: 9, y: 7, dir: "left" },
+      { x: 3, y: 4, dir: "left" },
+      { x: 5, y: 2, dir: "down" },
+      { x: 3, y: 0, dir: "right" },
+      { x: 1, y: 2, dir: "right" },
+      { x: 6, y: 16, dir: "down" },
+      { x: 9, y: 2, dir: "right" },
+      { x: 11, y: 16, dir: "down" },
+      { x: 4, y: 17, dir: "right" },
+      { x: 7, y: 16, dir: "left" },
+      { x: 9, y: 16, dir: "down" },
+      { x: 9, y: 17, dir: "right" },
+      { x: 7, y: 17, dir: "right" },
+      { x: 9, y: 3, dir: "right" },
+      { x: 5, y: 16, dir: "down" },
+      { x: 8, y: 18, dir: "right" },
+      { x: 4, y: 2, dir: "up" },
+      { x: 3, y: 18, dir: "right" },
+      { x: 5, y: 18, dir: "down" },
+      { x: 10, y: 16, dir: "up" },
+      { x: 10, y: 9, dir: "up" },
+      { x: 8, y: 13, dir: "left" },
+      { x: 9, y: 12, dir: "right" },
+      { x: 9, y: 9, dir: "right" },
+      { x: 0, y: 5, dir: "down" },
+      { x: 2, y: 5, dir: "down" },
+      { x: 8, y: 4, dir: "left" },
+      { x: 7, y: 11, dir: "up" },
+      { x: 6, y: 11, dir: "right" },
+      { x: 6, y: 13, dir: "left" },
+      { x: 2, y: 3, dir: "right" },
+      { x: 11, y: 13, dir: "down" },
+      { x: 10, y: 4, dir: "up" },
+      { x: 5, y: 4, dir: "down" },
+      { x: 8, y: 11, dir: "down" },
+      { x: 7, y: 3, dir: "right" },
+      { x: 6, y: 10, dir: "left" },
+      { x: 1, y: 11, dir: "right" },
+      { x: 4, y: 10, dir: "up" },
+      { x: 10, y: 11, dir: "up" },
+      { x: 7, y: 4, dir: "up" },
+      { x: 2, y: 17, dir: "right" },
+      { x: 11, y: 4, dir: "down" },
+      { x: 1, y: 5, dir: "up" },
+      { x: 4, y: 6, dir: "right" },
+      { x: 3, y: 9, dir: "down" },
+      { x: 4, y: 7, dir: "up" },
+      { x: 5, y: 8, dir: "down" },
+      { x: 1, y: 16, dir: "left" },
+      { x: 8, y: 15, dir: "down" },
+      { x: 1, y: 8, dir: "right" },
+      { x: 11, y: 11, dir: "down" },
+      { x: 2, y: 15, dir: "down" },
+      { x: 0, y: 16, dir: "down" },
+      { x: 3, y: 14, dir: "down" },
+      { x: 8, y: 7, dir: "down" },
+      { x: 1, y: 9, dir: "up" },
+      { x: 5, y: 14, dir: "right" },
+      { x: 6, y: 5, dir: "right" },
+      { x: 6, y: 6, dir: "right" },
+      { x: 9, y: 11, dir: "down" },
+      { x: 2, y: 8, dir: "down" },
+    ]
+  },
+  {
+    id: 17,
+    name: "第17关",
+    animalType: "pig",
+    playArea: {
+      x: 0,
+      y: 0,
+      cols: 12,
+      rows: 19
+    },
+    animals: [
+      { x: 10, y: 16, dir: "left" },
+      { x: 7, y: 0, dir: "up" },
+      { x: 4, y: 1, dir: "up" },
+      { x: 5, y: 2, dir: "down" },
+      { x: 7, y: 2, dir: "up" },
+      { x: 1, y: 2, dir: "up" },
+      { x: 3, y: 2, dir: "right" },
+      { x: 4, y: 18, dir: "right" },
+      { x: 9, y: 2, dir: "right" },
+      { x: 6, y: 16, dir: "down" },
+      { x: 9, y: 18, dir: "down" },
+      { x: 7, y: 16, dir: "up" },
+      { x: 8, y: 18, dir: "down" },
+      { x: 8, y: 16, dir: "down" },
+      { x: 3, y: 16, dir: "left" },
+      { x: 7, y: 18, dir: "right" },
+      { x: 9, y: 16, dir: "down" },
+      { x: 6, y: 12, dir: "right" },
+      { x: 8, y: 10, dir: "left" },
+      { x: 7, y: 11, dir: "right" },
+      { x: 5, y: 17, dir: "right" },
+      { x: 3, y: 17, dir: "right" },
+      { x: 10, y: 9, dir: "up" },
+      { x: 7, y: 12, dir: "up" },
+      { x: 9, y: 13, dir: "down" },
+      { x: 11, y: 11, dir: "right" },
+      { x: 9, y: 9, dir: "down" },
+      { x: 5, y: 10, dir: "left" },
+      { x: 2, y: 13, dir: "left" },
+      { x: 10, y: 13, dir: "left" },
+      { x: 8, y: 13, dir: "down" },
+      { x: 2, y: 10, dir: "left" },
+      { x: 5, y: 13, dir: "left" },
+      { x: 11, y: 9, dir: "down" },
+      { x: 2, y: 11, dir: "right" },
+      { x: 0, y: 12, dir: "down" },
+      { x: 5, y: 16, dir: "down" },
+      { x: 4, y: 11, dir: "up" },
+      { x: 1, y: 13, dir: "up" },
+      { x: 9, y: 11, dir: "right" },
+      { x: 0, y: 10, dir: "left" },
+      { x: 2, y: 1, dir: "down" },
+      { x: 6, y: 2, dir: "down" },
+      { x: 9, y: 0, dir: "right" },
+      { x: 5, y: 0, dir: "right" },
+      { x: 9, y: 1, dir: "left" },
+      { x: 3, y: 1, dir: "down" },
+      { x: 10, y: 2, dir: "up" },
+      { x: 9, y: 4, dir: "left" },
+      { x: 3, y: 3, dir: "right" },
+      { x: 0, y: 3, dir: "down" },
+      { x: 7, y: 5, dir: "up" },
+      { x: 5, y: 4, dir: "down" },
+      { x: 4, y: 3, dir: "up" },
+      { x: 5, y: 8, dir: "right" },
+      { x: 8, y: 9, dir: "right" },
+      { x: 6, y: 9, dir: "down" },
+      { x: 2, y: 4, dir: "left" },
+      { x: 7, y: 7, dir: "up" },
+      { x: 6, y: 7, dir: "down" },
+      { x: 8, y: 4, dir: "down" },
+      { x: 9, y: 7, dir: "down" },
+      { x: 11, y: 7, dir: "down" },
+      { x: 1, y: 4, dir: "up" },
+      { x: 2, y: 8, dir: "down" },
+      { x: 5, y: 9, dir: "right" },
+      { x: 10, y: 7, dir: "up" },
+      { x: 3, y: 7, dir: "left" },
+      { x: 6, y: 5, dir: "down" },
+      { x: 5, y: 7, dir: "down" },
+      { x: 3, y: 5, dir: "right" },
+      { x: 11, y: 5, dir: "down" },
+      { x: 10, y: 5, dir: "right" },
+      { x: 1, y: 15, dir: "right" },
+      { x: 11, y: 15, dir: "down" },
+      { x: 5, y: 14, dir: "right" },
+    ]
+  },
+  {
+    id: 18,
+    name: "第18关",
+    animalType: "pig",
+    playArea: {
+      x: 0,
+      y: 0,
+      cols: 12,
+      rows: 19
+    },
+    animals: [
+      { x: 4, y: 6, dir: "down" },
+      { x: 2, y: 11, dir: "up" },
+      { x: 5, y: 7, dir: "up" },
+      { x: 0, y: 3, dir: "left" },
+      { x: 11, y: 2, dir: "right" },
+      { x: 1, y: 6, dir: "right" },
+      { x: 6, y: 9, dir: "right" },
+      { x: 5, y: 14, dir: "right" },
+      { x: 10, y: 11, dir: "right" },
+      { x: 8, y: 4, dir: "right" },
+      { x: 7, y: 12, dir: "up" },
+      { x: 5, y: 2, dir: "down" },
+      { x: 8, y: 7, dir: "right" },
+      { x: 1, y: 15, dir: "right" },
+      { x: 6, y: 13, dir: "up" },
+      { x: 4, y: 7, dir: "right" },
+      { x: 10, y: 6, dir: "left" },
+      { x: 7, y: 5, dir: "up" },
+      { x: 3, y: 3, dir: "up" },
+      { x: 10, y: 5, dir: "left" },
+      { x: 2, y: 15, dir: "up" },
+      { x: 6, y: 11, dir: "left" },
+      { x: 10, y: 8, dir: "left" },
+      { x: 8, y: 16, dir: "up" },
+      { x: 9, y: 13, dir: "down" },
+      { x: 7, y: 15, dir: "up" },
+      { x: 1, y: 12, dir: "right" },
+      { x: 4, y: 16, dir: "left" },
+      { x: 8, y: 2, dir: "down" },
+      { x: 3, y: 12, dir: "up" },
+      { x: 4, y: 15, dir: "left" },
+      { x: 2, y: 4, dir: "right" },
+      { x: 3, y: 2, dir: "left" },
+      { x: 8, y: 14, dir: "left" },
+      { x: 10, y: 7, dir: "right" },
+      { x: 3, y: 9, dir: "up" },
+      { x: 1, y: 10, dir: "down" },
+      { x: 10, y: 3, dir: "up" },
+      { x: 9, y: 9, dir: "down" },
+      { x: 8, y: 10, dir: "up" },
+      { x: 7, y: 1, dir: "down" },
+      { x: 8, y: 8, dir: "up" },
+      { x: 1, y: 16, dir: "right" },
+      { x: 0, y: 13, dir: "left" },
+      { x: 4, y: 1, dir: "down" },
+      { x: 1, y: 8, dir: "right" },
+      { x: 6, y: 17, dir: "up" },
+      { x: 8, y: 3, dir: "right" },
+      { x: 1, y: 14, dir: "right" },
+      { x: 8, y: 5, dir: "left" },
+      { x: 6, y: 0, dir: "up" },
+      { x: 10, y: 10, dir: "right" },
+      { x: 4, y: 17, dir: "left" },
+      { x: 8, y: 0, dir: "left" },
+      { x: 3, y: 18, dir: "right" },
+      { x: 7, y: 17, dir: "up" },
+      { x: 4, y: 10, dir: "left" },
+      { x: 9, y: 18, dir: "right" },
+      { x: 10, y: 17, dir: "right" },
+      { x: 7, y: 2, dir: "right" },
+      { x: 3, y: 1, dir: "right" },
+      { x: 10, y: 12, dir: "left" },
+      { x: 8, y: 13, dir: "down" },
+      { x: 6, y: 6, dir: "right" },
+      { x: 5, y: 13, dir: "right" },
+      { x: 0, y: 11, dir: "left" },
+      { x: 6, y: 5, dir: "right" },
+      { x: 3, y: 16, dir: "up" },
+      { x: 8, y: 6, dir: "left" },
+      { x: 2, y: 0, dir: "left" },
+      { x: 2, y: 5, dir: "right" },
+      { x: 2, y: 13, dir: "up" },
+      { x: 5, y: 4, dir: "down" },
+      { x: 4, y: 4, dir: "down" },
+      { x: 10, y: 15, dir: "left" },
+    ]
   }
 ];
 
@@ -1326,27 +1690,22 @@ const state = {
   runToken: 0,
   toolMode: null,
   undoSnapshot: null,
+  firecrackerRunning: false,
+  collectionFilter: "all",
+  selectedCollectionItem: "remove",
+  equippedSkin: loadEquippedSkin(),
+  unlockedCollection: loadUnlockedCollection(),
+  equippedTools: loadEquippedTools(),
+  enabledAbilities: loadEnabledAbilities(),
   toolUses: {
     remove: 0,
     undo: 0,
   },
+  scoreBurstToken: 0,
 };
 
 const PIG_MARKUP = `
-  <span class="pig-shape">
-    <span class="pig-body"></span>
-    <span class="pig-head"></span>
-    <span class="pig-ear left"></span>
-    <span class="pig-ear right"></span>
-    <span class="pig-eye left"></span>
-    <span class="pig-eye right"></span>
-    <span class="pig-snout"></span>
-    <span class="pig-leg front-left"></span>
-    <span class="pig-leg front-right"></span>
-    <span class="pig-leg back-left"></span>
-    <span class="pig-leg back-right"></span>
-    <span class="pig-tail"></span>
-  </span>
+  <span class="pig-shape" aria-hidden="true"></span>
 `;
 
 const pasture = document.querySelector("#pasture");
@@ -1357,6 +1716,7 @@ const levelSelect = document.querySelector("#levelSelect");
 const levelSelectLabel = document.querySelector("#levelSelectLabel");
 const comboBurst = document.querySelector("#comboBurst");
 const comboCount = document.querySelector("#comboCount");
+const scorePill = document.querySelector(".score-pill");
 const scoreCount = document.querySelector("#scoreCount");
 const starTarget = document.querySelector("#starTarget");
 const totalStarsCount = document.querySelector("#totalStarsCount");
@@ -1366,8 +1726,11 @@ const completeScore = document.querySelector("#completeScore");
 const replayLevelBtn = document.querySelector("#replayLevelBtn");
 const nextLevelBtn = document.querySelector("#nextLevelBtn");
 const toast = document.querySelector("#toast");
+const homeBtn = document.querySelector("#homeBtn");
 const restartBtn = document.querySelector("#restartBtn");
 const removeTool = document.querySelector("#removeTool");
+const firecrackerTool = document.querySelector("#firecrackerTool");
+const firecrackerEffect = document.querySelector("#firecrackerEffect");
 const undoTool = document.querySelector("#undoTool");
 const startGameBtn = document.querySelector("#startGameBtn");
 const startStarsButton = document.querySelector("#startStarsButton");
@@ -1377,6 +1740,15 @@ const totalStarsButton = document.querySelector("#totalStarsButton");
 const toolUnlockModal = document.querySelector("#toolUnlockModal");
 const toolUnlockStarCount = document.querySelector("#toolUnlockStarCount");
 const toolUnlockList = document.querySelector("#toolUnlockList");
+const collectionTabs = document.querySelectorAll(".collection-tab");
+const toolGuideTitle = document.querySelector("#toolGuideTitle");
+const toolGuideMeta = document.querySelector("#toolGuideMeta");
+const toolGuideText = document.querySelector("#toolGuideText");
+const collectionActionBtn = document.querySelector("#collectionActionBtn");
+const collectionReveal = document.querySelector("#collectionReveal");
+const collectionRevealIcon = document.querySelector("#collectionRevealIcon");
+const collectionRevealName = document.querySelector("#collectionRevealName");
+const collectionRevealClose = document.querySelector("#collectionRevealClose");
 const closeToolUnlockBtn = document.querySelector("#closeToolUnlockBtn");
 
 function initLevel(index = 0) {
@@ -1392,6 +1764,7 @@ function initLevel(index = 0) {
   state.runToken += 1;
   state.toolMode = null;
   state.undoSnapshot = null;
+  state.firecrackerRunning = false;
   state.toolUses = {
     remove: 0,
     undo: 0,
@@ -1399,6 +1772,7 @@ function initLevel(index = 0) {
   state.animals = level.animals.map((animal, animalIndex) => ({
     ...animal,
     type: animal.type ?? level.animalType ?? "pig",
+    variant: animal.variant ?? getDecorativeAnimalVariant(levelIndex, animalIndex, animal),
     id: `pig-${levelIndex}-${animalIndex}`,
     active: true,
     busy: false,
@@ -1422,6 +1796,7 @@ function initLevel(index = 0) {
   hideComboBurst();
   hideLevelCompleteModal();
   updateToolState();
+  restoreFirecrackerPosition();
   showToast("点击小猪，让它向前跑出草地");
 }
 
@@ -1432,10 +1807,10 @@ function render() {
 
   state.animals
     .filter((animal) => animal.active)
-    .forEach((animal) => {
+    .forEach((animal, activeIndex) => {
       const pig = document.createElement("button");
       const animalType = getAnimalType(animal);
-      pig.className = `pig ${animalType.className}${animal.stunned ? " is-stunned" : ""}`;
+      pig.className = `pig ${animalType.className} pig-variant-${animal.variant}${animal.stunned ? " is-stunned" : ""}`;
       pig.type = "button";
       pig.dataset.id = animal.id;
       pig.draggable = false;
@@ -1448,12 +1823,25 @@ function render() {
       pig.style.setProperty("--trail-color", animalType.trailColor);
       pig.style.setProperty("--burst-color", animalType.burstColor);
       pig.style.setProperty("--stun-color", animalType.stunColor);
+      pig.style.setProperty("--breath-delay", `${-((activeIndex % 9) * 0.18)}s`);
       pig.setAttribute("aria-label", `小猪朝${DIRS[animal.dir].label}`);
       pig.innerHTML = PIG_MARKUP;
       bindAnimalInput(pig, animal.id);
       fragment.appendChild(pig);
     });
   pasture.appendChild(fragment);
+}
+
+function getDecorativeAnimalVariant(levelIndex, animalIndex, animal) {
+  if (levelIndex < 14) return "pink";
+
+  const designSeed = (animal.x * 17 + animal.y * 29 + animalIndex * 7 + levelIndex * 11) % 100;
+  const isOuterFrame = animal.x <= 1 || animal.x >= BOARD.cols - 2 || animal.y <= 1 || animal.y >= BOARD.rows - 2;
+  const isAccent = (animal.x + animal.y * 3 + levelIndex + animalIndex) % 11 === 0;
+
+  if (isOuterFrame && isAccent) return "black";
+  if (designSeed < 12) return "black";
+  return "pink";
 }
 
 function handleAnimalClick(id, element) {
@@ -1465,11 +1853,16 @@ function handleAnimalClick(id, element) {
   playAnimalTapFeedback(element);
 
   if (state.toolMode === "remove") {
+    if (!canUseTool("remove")) {
+      setToolMode(null);
+      showToast("移除次数已用完");
+      return;
+    }
     saveUndoSnapshot();
     state.toolUses.remove += 1;
     removeAnimal(animal, element);
     setToolMode(null);
-    showToast("已移除，-1000分");
+    showToast(`已移除，剩余${getToolUsesLeft("remove")}次`);
     return;
   }
 
@@ -1592,7 +1985,7 @@ function exitAnimal(animal, element) {
 
   animal.active = false;
   state.cleared += 1;
-  addExitScore();
+  addExitScore(center);
   updateHud();
 
   window.setTimeout(() => {
@@ -1839,6 +2232,77 @@ function checkLevelComplete() {
   }
 }
 
+async function useFirecracker() {
+  if (state.firecrackerRunning || state.locked) return;
+  if (!isAbilityUsable("firecracker")) {
+    showToolLockedToast("firecracker");
+    return;
+  }
+  const escapeTargets = findFirecrackerEscapableAnimals();
+  if (escapeTargets.length === 0) {
+    showToast("暂时没有能直接逃离的小猪");
+    return;
+  }
+
+  setToolMode(null);
+  state.firecrackerRunning = true;
+  updateToolState();
+  playFirecrackerEffect();
+  await wait(420);
+
+  const runToken = state.runToken;
+  let escaped = 0;
+
+  try {
+    for (const escapeTarget of escapeTargets) {
+      if (runToken !== state.runToken || state.locked) break;
+      const { animal, element } = escapeTarget;
+      if (!animal.active || animal.busy || !element.isConnected) continue;
+
+      const animalType = getAnimalType(animal);
+      const travelCells = getExitTravelCells(animal);
+      exitAnimal(animal, element);
+      escaped += 1;
+      await wait(getMoveDuration(animalType, travelCells) + 140);
+    }
+  } finally {
+    state.firecrackerRunning = false;
+    updateToolState();
+    if (escaped > 0) {
+      showToast(`炮仗响了，逃走${escaped}只`);
+    }
+  }
+}
+
+function findFirecrackerEscapableAnimals() {
+  return state.animals
+    .filter((candidate) => (
+      candidate.active
+      && !candidate.busy
+      && !findBlocker(candidate)
+      && getAnimalElement(candidate)
+    ))
+    .map((animal) => ({
+      animal,
+      element: getAnimalElement(animal),
+    }));
+}
+
+function playFirecrackerEffect() {
+  firecrackerEffect.hidden = false;
+  firecrackerEffect.classList.remove("is-playing");
+  void firecrackerEffect.offsetWidth;
+  firecrackerEffect.classList.add("is-playing");
+  window.setTimeout(() => {
+    firecrackerEffect.hidden = true;
+    firecrackerEffect.classList.remove("is-playing");
+  }, 760);
+}
+
+function getAnimalElement(animal) {
+  return pasture.querySelector(`.pig[data-id="${animal.id}"]`);
+}
+
 function spawnBurst(x, y, animalType, kind) {
   const puff = document.createElement("span");
   puff.className = `effect-burst ${kind}`;
@@ -2001,18 +2465,18 @@ function hideLevelCompleteModal() {
   levelCompleteModal.hidden = true;
 }
 
-function addExitScore() {
+function addExitScore(scorePoint = null) {
   state.combo += 1;
-  state.score += getExitScoreForCombo(state.combo);
-  showComboBurst(state.combo);
+  const gainedScore = getExitScoreForCombo(state.combo);
+  state.score += gainedScore;
+  showComboBurst(state.combo, gainedScore, scorePoint);
+  bumpScorePill();
 }
 
 function getExitScoreForCombo(combo) {
-  const comboStep = Math.max(0, combo - 1);
-  const earlyBonus = Math.min(comboStep, 9) * SCORE_RULES.comboBonusEarly;
-  const midBonus = Math.min(Math.max(0, comboStep - 9), 10) * SCORE_RULES.comboBonusMid;
-  const lateBonus = Math.max(0, comboStep - 19) * SCORE_RULES.comboBonusLate;
-  return SCORE_RULES.exitBase + earlyBonus + midBonus + lateBonus;
+  if (combo <= 5) return SCORE_RULES.comboScoreEarly;
+  if (combo <= 15) return SCORE_RULES.comboScoreMid;
+  return SCORE_RULES.comboScoreLate;
 }
 
 function resetCombo() {
@@ -2025,9 +2489,16 @@ function resetCombo() {
   hideComboBurst();
 }
 
-function showComboBurst(combo) {
-  comboCount.textContent = `x${combo}`;
-  comboBurst.classList.toggle("is-visible", combo >= 5);
+function showComboBurst(combo, gainedScore = getExitScoreForCombo(combo), scorePoint = null) {
+  const burstToken = state.scoreBurstToken + 1;
+  state.scoreBurstToken = burstToken;
+  if (scorePoint) {
+    comboBurst.style.setProperty("--score-x", scorePoint.x);
+    comboBurst.style.setProperty("--score-y", scorePoint.y - 0.82);
+  }
+  comboCount.textContent = `+${gainedScore}`;
+  comboBurst.classList.add("is-score-pop");
+  comboBurst.classList.add("is-visible");
   comboBurst.classList.toggle("is-warm", combo >= 10);
   comboBurst.classList.toggle("is-hot", combo >= 8);
   comboBurst.classList.toggle("is-blazing", combo >= 16);
@@ -2036,11 +2507,23 @@ function showComboBurst(combo) {
   comboBurst.classList.remove("is-popping");
   void comboBurst.offsetWidth;
   comboBurst.classList.add("is-popping");
+  window.setTimeout(() => {
+    if (state.scoreBurstToken === burstToken) {
+      hideComboBurst();
+    }
+  }, 640);
+}
+
+function bumpScorePill() {
+  scorePill.classList.remove("is-bumping");
+  void scorePill.offsetWidth;
+  scorePill.classList.add("is-bumping");
 }
 
 function hideComboBurst() {
   comboBurst.classList.remove(
     "is-visible",
+    "is-score-pop",
     "is-warm",
     "is-hot",
     "is-blazing",
@@ -2052,7 +2535,7 @@ function hideComboBurst() {
 
 function showComboBreak() {
   comboCount.textContent = "连击断啦";
-  comboBurst.classList.remove("is-warm", "is-hot", "is-blazing", "is-inferno", "is-popping");
+  comboBurst.classList.remove("is-score-pop", "is-warm", "is-hot", "is-blazing", "is-inferno", "is-popping");
   comboBurst.classList.add("is-visible", "is-breaking");
   window.setTimeout(() => {
     if (state.combo === 0) {
@@ -2157,11 +2640,129 @@ function getFirstUnclearedLevelIndex() {
   return index === -1 ? levels.length - 1 : index;
 }
 
+function getPreviewLevelIndexFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const levelNumber = Number(params.get("previewLevel") ?? params.get("level"));
+  if (!Number.isInteger(levelNumber)) return null;
+  const levels = getGameLevels();
+  if (levelNumber < 1 || levelNumber > levels.length) return null;
+  return levelNumber - 1;
+}
+
 function loadProgress() {
   try {
     return JSON.parse(window.localStorage.getItem(PROGRESS_STORAGE_KEY)) ?? {};
   } catch {
     return {};
+  }
+}
+
+function loadEquippedSkin() {
+  try {
+    const key = window.localStorage.getItem(EQUIPPED_SKIN_STORAGE_KEY);
+    return COLLECTION_ITEMS[key]?.type === "skin" ? key : null;
+  } catch {
+    return null;
+  }
+}
+
+function getStarterCollectionKeys() {
+  return Object.entries(COLLECTION_ITEMS)
+    .filter(([, item]) => item.starter)
+    .map(([key]) => key);
+}
+
+function loadUnlockedCollection() {
+  const unlocked = new Set(getStarterCollectionKeys());
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(UNLOCKED_COLLECTION_STORAGE_KEY));
+    if (!Array.isArray(saved)) return unlocked;
+    saved.forEach((key) => {
+      if (COLLECTION_ITEMS[key]) unlocked.add(key);
+    });
+  } catch {
+    // 收藏解锁记录读取失败时，保留默认初始道具。
+  }
+  return unlocked;
+}
+
+function saveUnlockedCollection() {
+  try {
+    window.localStorage.setItem(
+      UNLOCKED_COLLECTION_STORAGE_KEY,
+      JSON.stringify([...state.unlockedCollection]),
+    );
+  } catch {
+    showToast("收藏记录暂时无法保存");
+  }
+}
+
+function getStarterToolKeys() {
+  return Object.entries(COLLECTION_ITEMS)
+    .filter(([, item]) => item.starter && item.type === "tool")
+    .map(([key]) => key);
+}
+
+function loadEquippedTools() {
+  const fallback = new Set(getStarterToolKeys());
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(EQUIPPED_TOOLS_STORAGE_KEY));
+    if (!Array.isArray(saved)) return fallback;
+    const unlocked = loadUnlockedCollection();
+    const equipped = saved
+      .filter((key) => COLLECTION_ITEMS[key]?.type === "tool" && unlocked.has(key))
+      .slice(0, MAX_EQUIPPED_TOOLS);
+    return new Set(equipped.length > 0 ? equipped : getStarterToolKeys());
+  } catch {
+    return fallback;
+  }
+}
+
+function saveEquippedTools() {
+  try {
+    window.localStorage.setItem(
+      EQUIPPED_TOOLS_STORAGE_KEY,
+      JSON.stringify([...state.equippedTools]),
+    );
+  } catch {
+    showToast("道具携带记录暂时无法保存");
+  }
+}
+
+function loadEnabledAbilities() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(ENABLED_ABILITIES_STORAGE_KEY));
+    if (Array.isArray(saved)) {
+      return new Set(saved.filter((key) => COLLECTION_ITEMS[key]?.type === "ability"));
+    }
+  } catch {
+    // 继续使用兼容默认值。
+  }
+
+  const unlocked = loadUnlockedCollection();
+  return new Set(
+    Object.entries(COLLECTION_ITEMS)
+      .filter(([key, item]) => item.type === "ability" && unlocked.has(key))
+      .map(([key]) => key),
+  );
+}
+
+function saveEnabledAbilities() {
+  try {
+    window.localStorage.setItem(
+      ENABLED_ABILITIES_STORAGE_KEY,
+      JSON.stringify([...state.enabledAbilities]),
+    );
+  } catch {
+    showToast("能力开关暂时无法保存");
+  }
+}
+
+function saveEquippedSkin(key) {
+  try {
+    window.localStorage.setItem(EQUIPPED_SKIN_STORAGE_KEY, key);
+  } catch {
+    // 皮肤选择保存失败不影响游玩。
   }
 }
 
@@ -2190,6 +2791,132 @@ function saveLevelResult(levelIndex, score, stars) {
   levelSelect.value = String(levelIndex);
 }
 
+function loadFirecrackerPosition() {
+  try {
+    const position = JSON.parse(window.localStorage.getItem(FIRECRACKER_POSITION_KEY));
+    if (
+      !position
+      || !Number.isFinite(position.x)
+      || !Number.isFinite(position.y)
+    ) {
+      return null;
+    }
+    return {
+      x: Math.max(0, Math.min(1, position.x)),
+      y: Math.max(0, Math.min(1, position.y)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveFirecrackerPosition(position) {
+  try {
+    window.localStorage.setItem(FIRECRACKER_POSITION_KEY, JSON.stringify(position));
+  } catch {
+    // 位置记忆失败不影响道具使用。
+  }
+}
+
+function restoreFirecrackerPosition() {
+  const position = loadFirecrackerPosition();
+  if (!position) return;
+  window.requestAnimationFrame(() => {
+    setFirecrackerPosition(position);
+  });
+}
+
+function setFirecrackerPosition(position) {
+  const wrapRect = document.querySelector(".pasture-wrap").getBoundingClientRect();
+  const buttonRect = firecrackerTool.getBoundingClientRect();
+  const width = buttonRect.width || 46;
+  const height = buttonRect.height || 54;
+  const left = Math.max(0, Math.min(wrapRect.width - width, position.x * wrapRect.width - width / 2));
+  const top = Math.max(0, Math.min(wrapRect.height - height, position.y * wrapRect.height - height / 2));
+
+  firecrackerTool.classList.add("is-custom-position");
+  firecrackerTool.style.left = `${left}px`;
+  firecrackerTool.style.top = `${top}px`;
+  firecrackerTool.style.right = "auto";
+
+  firecrackerEffect.classList.add("is-custom-position");
+  firecrackerEffect.style.left = `${left + width / 2 - 38}px`;
+  firecrackerEffect.style.top = `${top + height / 2 - 38}px`;
+  firecrackerEffect.style.right = "auto";
+}
+
+function bindFirecrackerDrag() {
+  let dragState = null;
+
+  firecrackerTool.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || event.isPrimary === false) return;
+    const wrapRect = document.querySelector(".pasture-wrap").getBoundingClientRect();
+    const buttonRect = firecrackerTool.getBoundingClientRect();
+    dragState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+      wrapRect,
+      offsetX: event.clientX - buttonRect.left,
+      offsetY: event.clientY - buttonRect.top,
+      width: buttonRect.width,
+      height: buttonRect.height,
+    };
+    firecrackerTool.setPointerCapture?.(event.pointerId);
+  });
+
+  firecrackerTool.addEventListener("pointermove", (event) => {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
+    if (distance < 5 && !dragState.moved) return;
+    dragState.moved = true;
+    firecrackerTool.dataset.dragged = "true";
+    firecrackerTool.classList.add("is-dragging");
+
+    const left = Math.max(
+      0,
+      Math.min(
+        dragState.wrapRect.width - dragState.width,
+        event.clientX - dragState.wrapRect.left - dragState.offsetX,
+      ),
+    );
+    const top = Math.max(
+      0,
+      Math.min(
+        dragState.wrapRect.height - dragState.height,
+        event.clientY - dragState.wrapRect.top - dragState.offsetY,
+      ),
+    );
+
+    const position = {
+      x: (left + dragState.width / 2) / dragState.wrapRect.width,
+      y: (top + dragState.height / 2) / dragState.wrapRect.height,
+    };
+    setFirecrackerPosition(position);
+  });
+
+  function endDrag(event) {
+    if (!dragState || event.pointerId !== dragState.pointerId) return;
+    firecrackerTool.releasePointerCapture?.(event.pointerId);
+    firecrackerTool.classList.remove("is-dragging");
+    if (dragState.moved) {
+      const buttonRect = firecrackerTool.getBoundingClientRect();
+      saveFirecrackerPosition({
+        x: (buttonRect.left - dragState.wrapRect.left + buttonRect.width / 2) / dragState.wrapRect.width,
+        y: (buttonRect.top - dragState.wrapRect.top + buttonRect.height / 2) / dragState.wrapRect.height,
+      });
+      window.setTimeout(() => {
+        firecrackerTool.dataset.dragged = "false";
+      }, 160);
+    }
+    dragState = null;
+  }
+
+  firecrackerTool.addEventListener("pointerup", endDrag);
+  firecrackerTool.addEventListener("pointercancel", endDrag);
+}
+
 function getTotalStars() {
   return Object.values(state.bestByLevel).reduce(
     (total, result) => total + (result.stars ?? 0),
@@ -2199,6 +2926,9 @@ function getTotalStars() {
 
 let toastTimer = 0;
 function showToast(message) {
+  window.clearTimeout(toastTimer);
+  toast.classList.remove("is-visible");
+  return;
   toast.textContent = message;
   toast.classList.add("is-visible");
   window.clearTimeout(toastTimer);
@@ -2211,21 +2941,45 @@ restartBtn.addEventListener("click", () => {
   initLevel(state.levelIndex);
 });
 
+homeBtn.addEventListener("click", () => {
+  returnToStartScreen();
+});
+
 levelSelect.addEventListener("change", () => {
   initLevel(Number(levelSelect.value));
 });
 
 removeTool.addEventListener("click", () => {
   if (state.locked) return;
-  if (!isToolUnlocked("remove")) {
+  if (!isToolUsable("remove")) {
     showToolLockedToast("remove");
+    return;
+  }
+  if (!hasToolUsesLeft("remove")) {
+    showToast("移除次数已用完");
+    setToolMode(null);
     return;
   }
   setToolMode(state.toolMode === "remove" ? null : "remove");
   showToast(state.toolMode === "remove" ? "选择一只小猪移除" : "已取消移除");
 });
 
-undoTool.addEventListener("click", () => {
+firecrackerTool.addEventListener("click", (event) => {
+  if (firecrackerTool.dataset.dragged === "true") {
+    event.preventDefault();
+    firecrackerTool.dataset.dragged = "false";
+    return;
+  }
+  useFirecracker();
+});
+
+bindFirecrackerDrag();
+
+window.addEventListener("resize", () => {
+  restoreFirecrackerPosition();
+});
+
+undoTool?.addEventListener("click", () => {
   if (!isToolUnlocked("undo")) {
     showToolLockedToast("undo");
     return;
@@ -2259,9 +3013,52 @@ closeToolUnlockBtn.addEventListener("click", () => {
   hideToolUnlockModal();
 });
 
+collectionRevealClose.addEventListener("click", () => {
+  hideCollectionReveal();
+});
+
 toolUnlockModal.addEventListener("click", (event) => {
   if (event.target === toolUnlockModal) {
     hideToolUnlockModal();
+  }
+});
+
+toolUnlockList.addEventListener("click", (event) => {
+  const item = event.target.closest(".tool-unlock-item");
+  if (!item) return;
+  const itemKey = item.dataset.tool;
+  selectToolGuide(itemKey && COLLECTION_ITEMS[itemKey] ? itemKey : null, item);
+});
+
+collectionTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    state.collectionFilter = tab.dataset.filter ?? "all";
+    state.selectedCollectionItem = getDefaultCollectionItemKey();
+    renderToolUnlockModal();
+  });
+});
+
+collectionActionBtn.addEventListener("click", () => {
+  const itemKey = state.selectedCollectionItem;
+  const item = COLLECTION_ITEMS[itemKey];
+  if (!item) return;
+  if (!isCollectionItemUnlocked(itemKey)) {
+    if (canUnlockCollectionItem(itemKey)) {
+      unlockCollectionItem(itemKey);
+    }
+    return;
+  }
+  if (item.placeholder) return;
+  if (item.type === "tool") {
+    toggleEquippedTool(itemKey);
+    return;
+  }
+  if (item.type === "ability") {
+    toggleAbility(itemKey);
+    return;
+  }
+  if (item.type === "skin") {
+    equipSkin(itemKey);
   }
 });
 
@@ -2274,14 +3071,25 @@ function setToolMode(mode) {
 function updateToolState() {
   pasture.classList.toggle("is-targeting", Boolean(state.toolMode));
   removeTool.classList.toggle("is-selected", state.toolMode === "remove");
-  removeTool.disabled = state.locked || !isToolUnlocked("remove");
-  removeTool.classList.toggle("is-locked", !isToolUnlocked("remove"));
+  removeTool.disabled =
+    state.locked || !isToolUsable("remove") || !hasToolUsesLeft("remove");
+  removeTool.classList.toggle(
+    "is-locked",
+    !isToolUsable("remove") || !hasToolUsesLeft("remove"),
+  );
   removeTool.setAttribute(
     "aria-pressed",
     state.toolMode === "remove" ? "true" : "false",
   );
   removeTool.querySelector(".tool-count").textContent =
-    `${SCORE_RULES.removeScore}分`;
+    `${getToolUsesLeft("remove")}次`;
+  firecrackerTool.disabled =
+    state.locked || !isAbilityUsable("firecracker") || state.firecrackerRunning;
+  firecrackerTool.classList.toggle(
+    "is-locked",
+    !isAbilityUsable("firecracker"),
+  );
+  firecrackerTool.classList.toggle("is-running", state.firecrackerRunning);
   updateUndoState();
 }
 
@@ -2324,11 +3132,7 @@ function undoLastAction() {
   clearPathRunners();
 
   hideLevelCompleteModal();
-  if (state.combo >= 5) {
-    showComboBurst(state.combo);
-  } else {
-    hideComboBurst();
-  }
+  hideComboBurst();
   render();
   updateHud();
   updateToolState();
@@ -2336,20 +3140,38 @@ function undoLastAction() {
 }
 
 function updateUndoState() {
+  if (!undoTool) return;
   undoTool.disabled = state.locked || !state.undoSnapshot || !isToolUnlocked("undo");
   undoTool.classList.toggle("is-locked", !isToolUnlocked("undo"));
   undoTool.querySelector(".tool-count").textContent = `${SCORE_RULES.undoScore}分`;
 }
 
 function canUseTool(tool) {
-  if (tool === "remove") return isToolUnlocked("remove");
+  if (tool === "remove") return isToolUsable("remove") && hasToolUsesLeft("remove");
   if (tool === "undo") return isToolUnlocked("undo");
   return false;
 }
 
+function hasToolUsesLeft(tool) {
+  return getToolUsesLeft(tool) > 0;
+}
+
+function getToolUsesLeft(tool) {
+  const limit = TOOL_LIMITS[tool];
+  if (!Number.isFinite(limit)) return Infinity;
+  return Math.max(0, limit - (state.toolUses[tool] ?? 0));
+}
+
 function isToolUnlocked(tool) {
-  const unlock = TOOL_UNLOCKS[tool];
-  return Boolean(unlock) && getTotalStars() >= unlock.requiredStars;
+  return isCollectionItemUnlocked(tool);
+}
+
+function isToolUsable(tool) {
+  return isCollectionItemUnlocked(tool) && state.equippedTools.has(tool);
+}
+
+function isAbilityUsable(key) {
+  return isCollectionItemUnlocked(key) && state.enabledAbilities.has(key);
 }
 
 function getToolStarsLeft(tool) {
@@ -2361,6 +3183,20 @@ function getToolStarsLeft(tool) {
 function showToolLockedToast(tool) {
   const unlock = TOOL_UNLOCKS[tool];
   if (!unlock) return;
+  if (isCollectionItemUnlocked(tool)) {
+    if (unlock.type === "tool" && !state.equippedTools.has(tool)) {
+      showToast(`${unlock.name}未携带`);
+      return;
+    }
+    if (unlock.type === "ability" && !state.enabledAbilities.has(tool)) {
+      showToast(`${unlock.name}已关闭`);
+      return;
+    }
+  }
+  if (canUnlockCollectionItem(tool)) {
+    showToast(`${unlock.name}可在收藏馆解锁`);
+    return;
+  }
   showToast(`${unlock.name}还差${getToolStarsLeft(tool)}★解锁`);
 }
 
@@ -2395,28 +3231,324 @@ function openToolUnlockModal() {
 
 function hideToolUnlockModal() {
   toolUnlockModal.hidden = true;
+  hideCollectionReveal();
 }
 
 function renderToolUnlockModal() {
   const totalStars = getTotalStars();
   toolUnlockStarCount.textContent = `${totalStars}★`;
-  toolUnlockList.innerHTML = Object.entries(TOOL_UNLOCKS).map(([key, tool]) => {
-    const unlocked = totalStars >= tool.requiredStars;
+  collectionTabs.forEach((tab) => {
+    tab.classList.toggle("is-active", tab.dataset.filter === state.collectionFilter);
+  });
+
+  const toolSlots = getFilteredCollectionItems();
+  if (!toolSlots.some((slot) => slot.key === state.selectedCollectionItem)) {
+    state.selectedCollectionItem = toolSlots[0]?.key ?? null;
+  }
+  while (state.collectionFilter === "all" && toolSlots.length < TOOL_UNLOCK_GRID_SIZE) {
+    toolSlots.push(null);
+  }
+
+  if (toolSlots.length === 0) {
+    toolUnlockList.innerHTML = `
+      <div class="collection-empty">
+        <strong>${getCollectionEmptyTitle()}</strong>
+        <p>${getCollectionEmptyText()}</p>
+      </div>
+    `;
+    selectToolGuide(null);
+    return;
+  }
+
+  toolUnlockList.innerHTML = toolSlots.map((slot) => {
+    if (!slot) {
+      return `
+        <button class="tool-unlock-item is-locked" type="button" aria-label="待解锁内容">
+          <span class="tool-unlock-icon" aria-hidden="true">?</span>
+          <div class="tool-unlock-copy">
+            <h3>待解锁</h3>
+          </div>
+          <strong class="tool-unlock-state">待定</strong>
+        </button>
+      `;
+    }
+
+    const { key, tool } = slot;
+    const unlocked = isCollectionItemUnlocked(key);
+    const ready = !unlocked && canUnlockCollectionItem(key);
     const starsLeft = Math.max(0, tool.requiredStars - totalStars);
+    const active = isCollectionItemActive(key);
+    const stateText = getCollectionStateText(key, unlocked);
+    const titleText = unlocked || ready ? tool.name : `${tool.requiredStars}★解锁`;
+    const iconMarkup = unlocked ? getCollectionIconMarkup(tool) : ready ? "★" : "?";
+    const lockedLabel = ready ? "可解锁" : `${tool.requiredStars}★解锁`;
     return `
-      <article class="tool-unlock-item ${unlocked ? "is-unlocked" : "is-locked"}">
-        <span class="tool-unlock-icon" aria-hidden="true">${tool.icon}</span>
+      <button class="tool-unlock-item ${unlocked ? "is-unlocked" : ready ? "is-ready" : "is-locked"} ${active ? "is-equipped" : ""}" type="button" data-tool="${key}" aria-label="${unlocked ? tool.name : ready ? `${tool.name}可解锁` : `还差${starsLeft}星解锁`}">
+        <span class="tool-unlock-icon" aria-hidden="true">${iconMarkup}</span>
         <div class="tool-unlock-copy">
-          <h3>${tool.name}</h3>
-          <p>${tool.description}</p>
-          <small>${tool.costText}</small>
+          <h3>${titleText}</h3>
         </div>
         <strong class="tool-unlock-state">
-          ${unlocked ? "已解锁" : `还差${starsLeft}★`}
+          ${unlocked ? stateText : lockedLabel}
         </strong>
-      </article>
+      </button>
     `;
   }).join("");
+  selectToolGuide(state.selectedCollectionItem);
+}
+
+function selectToolGuide(toolKey, selectedItem = null) {
+  state.selectedCollectionItem = toolKey;
+  toolUnlockList.querySelectorAll(".tool-unlock-item").forEach((item) => {
+    const selected = selectedItem
+      ? item === selectedItem
+      : item.dataset.tool === toolKey;
+    item.classList.toggle("is-selected", selected);
+  });
+
+  const tool = toolKey ? COLLECTION_ITEMS[toolKey] : null;
+  const unlocked = toolKey ? isToolUnlocked(toolKey) : false;
+  const ready = toolKey ? canUnlockCollectionItem(toolKey) : false;
+  toolGuideTitle.textContent = tool ? tool.name : "待解锁";
+  toolGuideMeta.textContent = tool
+    ? getCollectionGuideMeta(toolKey, tool, unlocked)
+    : "未知分类 · 解锁条件待定";
+  toolGuideText.textContent = getCollectionGuideText(toolKey, tool, unlocked, ready);
+  renderCollectionAction(toolKey, tool, unlocked);
+}
+
+function getFilteredCollectionItems() {
+  return Object.entries(COLLECTION_ITEMS)
+    .filter(([key, item]) => {
+      if (state.collectionFilter === "all") return true;
+      return item.type === state.collectionFilter && isCollectionItemUnlocked(key);
+    })
+    .map(([key, tool]) => ({ key, tool }));
+}
+
+function getCollectionEmptyTitle() {
+  if (state.collectionFilter === "tool") return "暂无已拥有道具";
+  if (state.collectionFilter === "ability") return "暂无已拥有能力";
+  if (state.collectionFilter === "skin") return "暂无已拥有皮肤";
+  return "暂无内容";
+}
+
+function getCollectionEmptyText() {
+  if (state.collectionFilter === "tool") return `道具解锁后会出现在这里。每关最多携带${MAX_EQUIPPED_TOOLS}个道具。`;
+  if (state.collectionFilter === "ability") return "能力解锁后会出现在这里，可以在详情里启用或关闭。";
+  if (state.collectionFilter === "skin") return "皮肤解锁后会出现在这里，可以在详情里选择使用。";
+  return "先去全部页查看可解锁内容。";
+}
+
+function getDefaultCollectionItemKey() {
+  return getFilteredCollectionItems()[0]?.key ?? null;
+}
+
+function getCollectionStateText(key, unlocked) {
+  if (!unlocked) return "";
+  const item = COLLECTION_ITEMS[key];
+  if (item.type === "tool") return state.equippedTools.has(key) ? "已携带" : "已拥有";
+  if (item.type === "ability") return state.enabledAbilities.has(key) ? "已启用" : "已关闭";
+  if (item.type === "skin") return state.equippedSkin === key ? "使用中" : "已解锁";
+  return "已解锁";
+}
+
+function getCollectionGuideMeta(key, item, unlocked) {
+  if (!unlocked) return `${item.typeName} · ${item.requiredStars}★解锁`;
+  if (item.type === "tool") {
+    return `${item.typeName} · ${state.equippedTools.has(key) ? "已携带" : "未携带"}`;
+  }
+  if (item.type === "ability") {
+    return `${item.typeName} · ${state.enabledAbilities.has(key) ? "已启用" : "已关闭"}`;
+  }
+  if (item.type === "skin") {
+    return `${item.typeName} · ${state.equippedSkin === key ? "使用中" : "已解锁"}`;
+  }
+  return `${item.typeName} · 已解锁`;
+}
+
+function isCollectionItemActive(key) {
+  const item = COLLECTION_ITEMS[key];
+  if (!item) return false;
+  if (item.type === "tool") return state.equippedTools.has(key);
+  if (item.type === "ability") return state.enabledAbilities.has(key);
+  if (item.type === "skin") return state.equippedSkin === key;
+  return false;
+}
+
+function isCollectionItemUnlocked(key) {
+  return Boolean(COLLECTION_ITEMS[key]) && state.unlockedCollection.has(key);
+}
+
+function canUnlockCollectionItem(key) {
+  const item = COLLECTION_ITEMS[key];
+  return Boolean(item)
+    && !isCollectionItemUnlocked(key)
+    && getTotalStars() >= item.requiredStars;
+}
+
+function getCollectionGuideText(key, item, unlocked, ready) {
+  if (!item) return "这个格子还没有配置内容。";
+  if (unlocked && item.placeholder) return "这个格子已解锁，具体道具规则后续配置。";
+  if (unlocked && item.type === "tool") {
+    return `${item.guide} 每关最多携带${MAX_EQUIPPED_TOOLS}个道具，当前已携带${state.equippedTools.size}个。`;
+  }
+  if (unlocked && item.type === "ability") {
+    return `${item.guide} 你可以在这里启用或关闭这个能力。`;
+  }
+  if (unlocked) return item.guide;
+  if (ready) return "星星数量已达标，点击下方按钮手动解锁。";
+  return `${item.requiredStars}★解锁，当前还差${getToolStarsLeft(key)}★。`;
+}
+
+function renderCollectionAction(key, item, unlocked) {
+  if (!item) {
+    collectionActionBtn.hidden = true;
+    return;
+  }
+
+  if (!unlocked) {
+    collectionActionBtn.hidden = false;
+    collectionActionBtn.disabled = !canUnlockCollectionItem(key);
+    collectionActionBtn.textContent = canUnlockCollectionItem(key)
+      ? "解锁"
+      : `还差${getToolStarsLeft(key)}★`;
+    return;
+  }
+
+  if (item.placeholder) {
+    collectionActionBtn.hidden = true;
+    return;
+  }
+
+  if (item.type === "tool") {
+    const equipped = state.equippedTools.has(key);
+    collectionActionBtn.hidden = false;
+    collectionActionBtn.disabled = !equipped && state.equippedTools.size >= MAX_EQUIPPED_TOOLS;
+    collectionActionBtn.textContent = equipped
+      ? "卸下"
+      : state.equippedTools.size >= MAX_EQUIPPED_TOOLS
+        ? `已满${MAX_EQUIPPED_TOOLS}个`
+        : "携带";
+    return;
+  }
+
+  if (item.type === "ability") {
+    collectionActionBtn.hidden = false;
+    collectionActionBtn.disabled = false;
+    collectionActionBtn.textContent = state.enabledAbilities.has(key) ? "关闭" : "启用";
+    return;
+  }
+
+  if (item.type === "skin") {
+    collectionActionBtn.hidden = false;
+    collectionActionBtn.disabled = state.equippedSkin === key;
+    collectionActionBtn.textContent = state.equippedSkin === key ? "使用中" : "使用";
+    return;
+  }
+
+  collectionActionBtn.hidden = true;
+}
+
+function getCollectionIconMarkup(item) {
+  if (item?.image) {
+    return `<img src="${item.image}" alt="" />`;
+  }
+  return item?.icon ?? "?";
+}
+
+function unlockCollectionItem(key) {
+  if (!canUnlockCollectionItem(key)) return;
+  const item = COLLECTION_ITEMS[key];
+  state.unlockedCollection.add(key);
+  if (item?.type === "ability") {
+    state.enabledAbilities.add(key);
+    saveEnabledAbilities();
+  }
+  saveUnlockedCollection();
+  renderToolUnlockModal();
+  updateToolState();
+  triggerCollectionUnlockAnimation(key);
+  showCollectionReveal(key);
+}
+
+function toggleEquippedTool(key) {
+  if (!isCollectionItemUnlocked(key) || COLLECTION_ITEMS[key]?.type !== "tool") return;
+  if (state.equippedTools.has(key)) {
+    state.equippedTools.delete(key);
+  } else {
+    if (state.equippedTools.size >= MAX_EQUIPPED_TOOLS) return;
+    state.equippedTools.add(key);
+  }
+  saveEquippedTools();
+  renderToolUnlockModal();
+  updateToolState();
+}
+
+function toggleAbility(key) {
+  if (!isCollectionItemUnlocked(key) || COLLECTION_ITEMS[key]?.type !== "ability") return;
+  if (state.enabledAbilities.has(key)) {
+    state.enabledAbilities.delete(key);
+  } else {
+    state.enabledAbilities.add(key);
+  }
+  saveEnabledAbilities();
+  renderToolUnlockModal();
+  updateToolState();
+}
+
+function triggerCollectionUnlockAnimation(key) {
+  window.requestAnimationFrame(() => {
+    const item = toolUnlockList.querySelector(`[data-tool="${key}"]`);
+    if (!item) return;
+    item.classList.add("is-unlock-pop");
+    window.setTimeout(() => {
+      item.classList.remove("is-unlock-pop");
+    }, 760);
+  });
+}
+
+function showCollectionReveal(key) {
+  const item = COLLECTION_ITEMS[key];
+  if (!item) return;
+  collectionRevealIcon.innerHTML = getCollectionIconMarkup(item);
+  collectionRevealIcon.classList.toggle("has-image", Boolean(item.image));
+  collectionRevealName.textContent = item.name;
+  collectionReveal.hidden = false;
+  collectionReveal.classList.remove("is-playing");
+  void collectionReveal.offsetWidth;
+  collectionReveal.classList.add("is-playing");
+}
+
+function hideCollectionReveal() {
+  collectionReveal.hidden = true;
+  collectionReveal.classList.remove("is-playing");
+}
+
+function equipSkin(key) {
+  state.equippedSkin = key;
+  saveEquippedSkin(key);
+  renderToolUnlockModal();
+}
+
+function returnToStartScreen() {
+  state.locked = true;
+  state.toolMode = null;
+  state.firecrackerRunning = false;
+  state.runToken += 1;
+  clearPathRunners();
+  hideComboBurst();
+  hideLevelCompleteModal();
+  hideToolUnlockModal();
+  updateToolState();
+  renderStartScreen();
+  document.body.classList.add("is-starting");
 }
 
 renderStartScreen();
+
+const previewLevelIndex = getPreviewLevelIndexFromUrl();
+if (previewLevelIndex !== null) {
+  document.body.classList.remove("is-starting");
+  initLevel(previewLevelIndex);
+}
