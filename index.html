@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>小猪出栏 - 第一关</title>
-    <link rel="stylesheet" href="./styles.css?v=home-stats-3" />
+    <link rel="stylesheet" href="./styles.css?v=cleanup-v5" />
   </head>
   <body class="is-starting">
     <main class="game-shell">
@@ -14,10 +14,11 @@
           <h1 class="visually-hidden" id="startTitle">小猪快跑</h1>
           <button class="start-collection-button" id="startStarsButton" type="button">收藏馆</button>
           <div class="start-stats" aria-label="玩家进度">
-            <div class="start-stat-card">
+            <button class="start-stat-card start-stars-card" id="startStarsStatButton" type="button" aria-label="查看收藏馆">
               <span class="start-stat-label">总星数</span>
               <strong class="start-stat-value"><span id="startTotalStars">0</span><span class="start-stat-unit">星</span></strong>
-            </div>
+              <span class="unlock-badge start-unlock-badge" id="startUnlockBadge" hidden>新</span>
+            </button>
             <div class="start-stat-card">
               <span class="start-stat-label">已通关</span>
               <strong class="start-stat-value"><span id="startClearedLevels">0</span><span class="start-stat-unit">关</span></strong>
@@ -64,7 +65,7 @@
           <span class="combo-fire-ring" aria-hidden="true"></span>
           <strong id="comboCount">0</strong>
         </div>
-        <button class="firecracker-button" id="firecrackerTool" type="button" aria-label="使用炮仗">
+        <button class="firecracker-button" id="firecrackerTool" type="button" aria-label="使用炮仗" hidden>
           <span class="firecracker-icon" aria-hidden="true"></span>
           <small>炮仗</small>
         </button>
@@ -79,7 +80,12 @@
         <button class="tool-card" id="removeTool" type="button">
           <span class="tool-pig" aria-hidden="true"></span>
           <span>移除</span>
-          <small class="tool-count">2次</small>
+          <small class="tool-count">1次</small>
+        </button>
+        <button class="tool-card stimulant-tool" id="stimulantTool" type="button" hidden>
+          <span class="tool-stimulant" aria-hidden="true">⚡</span>
+          <span>兴奋剂</span>
+          <small class="tool-count">1次</small>
         </button>
       </section>
 
@@ -88,6 +94,9 @@
           <h2 id="completeTitle">通关</h2>
           <div class="complete-stars" id="completeStars" aria-label="本关星级">☆☆☆</div>
           <div class="complete-score" id="completeScore">0分</div>
+          <button class="complete-unlock-notice" id="completeUnlockNotice" type="button" hidden>
+            有新内容可解锁
+          </button>
           <div class="complete-actions">
             <button class="complete-button" id="replayLevelBtn" type="button">重玩本关</button>
             <button class="complete-button is-primary" id="nextLevelBtn" type="button">下一关</button>
@@ -109,6 +118,7 @@
             <button class="collection-tab" type="button" data-filter="ability">能力</button>
             <button class="collection-tab" type="button" data-filter="skin">皮肤</button>
           </div>
+          <p class="collection-rule" id="collectionRule"></p>
           <div class="tool-unlock-list" id="toolUnlockList"></div>
           <div class="tool-guide" id="toolGuide" aria-live="polite">
             <strong id="toolGuideTitle">选择道具</strong>
@@ -121,16 +131,15 @@
               <span class="collection-reveal-light" aria-hidden="true"></span>
               <div class="collection-reveal-icon" id="collectionRevealIcon" aria-hidden="true"></div>
               <strong id="collectionRevealName">新道具</strong>
-              <small>已解锁</small>
+              <small id="collectionRevealMeta">已解锁</small>
               <button class="collection-reveal-close" id="collectionRevealClose" type="button">收下</button>
             </div>
           </div>
         </div>
       </section>
 
-      <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </main>
 
-    <script src="./game.js?v=home-stats-3"></script>
+    <script src="./game.js?v=tool-limit-1"></script>
   </body>
 </html>

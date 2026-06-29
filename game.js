@@ -8,7 +8,8 @@ const DIRS = {
 const ANIMAL_TYPES = {
   pig: {
     className: "animal-pig",
-    moveMsPerCell: 105,
+    moveMsPerCell: 86,
+    pathMsPerCell: 56,
     crashMoveMsPerCell: 170,
     crashBumpMs: 160,
     stunMs: 620,
@@ -28,10 +29,11 @@ const MOVE_EASING = {
 
 const PATH_EXIT = {
   roadOffsetCells: 0.85,
+  bottomEntryOffsetCells: 0.42,
   gateYCells: -0.85,
   gateExitYCells: -2.35,
-  turnPauseMs: 36,
-  fadeMs: 220,
+  turnPauseMs: 16,
+  fadeMs: 160,
 };
 
 const BOARD = {
@@ -47,12 +49,11 @@ const SCORE_RULES = {
   comboScoreEarly: 5,
   comboScoreMid: 10,
   comboScoreLate: 15,
-  removeScore: -1000,
-  undoScore: -500,
 };
 
 const TOOL_LIMITS = {
-  remove: 2,
+  remove: 1,
+  stimulant: 1,
 };
 
 const COLLECTION_UNLOCK_STEP = 5;
@@ -64,7 +65,7 @@ const COLLECTION_ITEMS = {
     typeName: "道具",
     description: "选择一只小猪直接移除。",
     guide: "点击移除任意一只小猪。",
-    costText: "每关2次",
+    costText: "每关1次",
     requiredStars: 0,
     icon: "●",
     starter: true,
@@ -73,23 +74,22 @@ const COLLECTION_ITEMS = {
     name: "炮仗",
     type: "ability",
     typeName: "能力",
-    description: "让可直接出栏的小猪批量逃离。",
-    guide: "使用炮仗后，当前界面上前方没有阻挡的小猪会自动逃离。本次只判断点击时已经能逃离的小猪，不触发连锁反应。",
+    description: "炮仗一响，小猪们会自己往外跑。",
+    guide: "点燃炮仗，让现在能跑出去的小猪一起逃走。",
     costText: "当前可逃",
     requiredStars: 5,
     icon: "!",
     image: "./assets/optimized/firecracker-prop-96.png",
   },
-  mysteryTool10: {
-    name: "神秘道具",
+  stimulant: {
+    name: "兴奋剂",
     type: "tool",
     typeName: "道具",
-    description: "后续配置新道具。",
-    guide: "这里会放后续新增的道具规则。",
-    costText: "待配置",
+    description: "小猪变得兴奋，可以进行一次跨越。",
+    guide: "选择一只小猪，让它兴奋起来，向前跨越一次。",
+    costText: "每关1次",
     requiredStars: 10,
-    icon: "?",
-    placeholder: true,
+    icon: "⚡",
   },
   mysteryTool15: {
     name: "神秘道具",
@@ -159,11 +159,13 @@ const COLLECTION_ITEMS = {
   },
 };
 
-const TOOL_UNLOCKS = COLLECTION_ITEMS;
 const TOOL_UNLOCK_GRID_SIZE = 9;
 
 const STAR_RULES = {
+  thresholdMultiplier: 1.1,
   twoStarRatio: 0.68,
+  twoStarMaxPerfectRatio: 0.7,
+  threeStarMaxPerfectRatio: 0.92,
   threeStarAverageComboByLevel: [
     9, 11, 13, 15, 17,
     18, 19, 20, 22, 23,
@@ -173,12 +175,19 @@ const STAR_RULES = {
   roundTo: 50,
 };
 
-const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV1";
+const STIMULANT_CHARGE_MS = 180;
+const STIMULANT_MOVE_MULTIPLIER = 0.52;
+const STIMULANT_CRASH_MULTIPLIER = 0.62;
+const FIRECRACKER_START_DELAY_MS = 260;
+const FIRECRACKER_CHAIN_GAP_MS = 64;
+const FIRECRACKER_MOVE_MULTIPLIER = 0.68;
+
+const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV2";
 const FIRECRACKER_POSITION_KEY = "pigEscapeFirecrackerPositionV1";
-const EQUIPPED_SKIN_STORAGE_KEY = "pigEscapeEquippedSkinV1";
-const UNLOCKED_COLLECTION_STORAGE_KEY = "pigEscapeUnlockedCollectionV1";
-const ENABLED_ABILITIES_STORAGE_KEY = "pigEscapeEnabledAbilitiesV1";
-const EQUIPPED_TOOLS_STORAGE_KEY = "pigEscapeEquippedToolsV1";
+const EQUIPPED_SKIN_STORAGE_KEY = "pigEscapeEquippedSkinV2";
+const UNLOCKED_COLLECTION_STORAGE_KEY = "pigEscapeUnlockedCollectionV2";
+const ENABLED_ABILITIES_STORAGE_KEY = "pigEscapeEnabledAbilitiesV2";
+const EQUIPPED_TOOLS_STORAGE_KEY = "pigEscapeEquippedToolsV2";
 const DEFAULT_LEVEL_INDEX = 0;
 const MAX_EQUIPPED_TOOLS = 2;
 
@@ -1661,6 +1670,94 @@ const LEVELS = [
       { x: 4, y: 4, dir: "down" },
       { x: 10, y: 15, dir: "left" },
     ]
+  },
+  {
+    id: 19,
+    name: "第19关",
+    animalType: "pig",
+    playArea: {
+      x: 0,
+      y: 0,
+      cols: 12,
+      rows: 19
+    },
+    animals: [
+      { x: 6, y: 9, dir: "down" },
+      { x: 8, y: 6, dir: "up" },
+      { x: 3, y: 7, dir: "right" },
+      { x: 1, y: 4, dir: "down" },
+      { x: 4, y: 12, dir: "down" },
+      { x: 1, y: 14, dir: "down" },
+      { x: 9, y: 16, dir: "right" },
+      { x: 10, y: 11, dir: "down" },
+      { x: 6, y: 4, dir: "down" },
+      { x: 4, y: 6, dir: "right" },
+      { x: 7, y: 2, dir: "left" },
+      { x: 7, y: 3, dir: "up" },
+      { x: 6, y: 15, dir: "down" },
+      { x: 5, y: 9, dir: "up" },
+      { x: 2, y: 8, dir: "left" },
+      { x: 5, y: 8, dir: "right" },
+      { x: 3, y: 12, dir: "down" },
+      { x: 4, y: 5, dir: "down" },
+      { x: 8, y: 11, dir: "left" },
+      { x: 5, y: 7, dir: "right" },
+      { x: 8, y: 13, dir: "down" },
+      { x: 3, y: 16, dir: "up" },
+      { x: 6, y: 7, dir: "down" },
+      { x: 7, y: 15, dir: "up" },
+      { x: 7, y: 13, dir: "right" },
+      { x: 2, y: 13, dir: "down" },
+      { x: 3, y: 13, dir: "left" },
+      { x: 10, y: 16, dir: "up" },
+      { x: 8, y: 8, dir: "right" },
+      { x: 5, y: 3, dir: "down" },
+      { x: 8, y: 3, dir: "up" },
+      { x: 2, y: 4, dir: "left" },
+      { x: 2, y: 15, dir: "left" },
+      { x: 10, y: 5, dir: "right" },
+      { x: 1, y: 8, dir: "up" },
+      { x: 3, y: 5, dir: "right" },
+      { x: 7, y: 12, dir: "down" },
+      { x: 10, y: 8, dir: "down" },
+      { x: 10, y: 15, dir: "right" },
+      { x: 10, y: 3, dir: "right" },
+      { x: 9, y: 13, dir: "up" },
+      { x: 8, y: 17, dir: "right" },
+      { x: 6, y: 5, dir: "right" },
+      { x: 2, y: 2, dir: "up" },
+      { x: 1, y: 6, dir: "up" },
+      { x: 4, y: 16, dir: "down" },
+      { x: 3, y: 2, dir: "left" },
+      { x: 1, y: 16, dir: "down" },
+      { x: 7, y: 10, dir: "left" },
+      { x: 4, y: 3, dir: "right" },
+      { x: 1, y: 11, dir: "left" },
+      { x: 2, y: 17, dir: "down" },
+      { x: 8, y: 9, dir: "left" },
+      { x: 9, y: 12, dir: "left" },
+      { x: 9, y: 17, dir: "up" },
+      { x: 6, y: 2, dir: "down" },
+      { x: 3, y: 9, dir: "right" },
+      { x: 4, y: 17, dir: "left" },
+      { x: 6, y: 11, dir: "down" },
+      { x: 0, y: 5, dir: "left" },
+      { x: 7, y: 7, dir: "down" },
+      { x: 5, y: 14, dir: "up" },
+      { x: 5, y: 11, dir: "up" },
+      { x: 9, y: 4, dir: "left" },
+      { x: 3, y: 14, dir: "right" },
+      { x: 7, y: 14, dir: "left" },
+      { x: 10, y: 14, dir: "down" },
+      { x: 10, y: 2, dir: "right" },
+      { x: 3, y: 10, dir: "right" },
+      { x: 10, y: 9, dir: "left" },
+      { x: 4, y: 9, dir: "up" },
+      { x: 0, y: 15, dir: "down" },
+      { x: 9, y: 7, dir: "down" },
+      { x: 0, y: 12, dir: "left" },
+      { x: 8, y: 5, dir: "right" },
+    ]
   }
 ];
 
@@ -1689,7 +1786,6 @@ const state = {
   locked: false,
   runToken: 0,
   toolMode: null,
-  undoSnapshot: null,
   firecrackerRunning: false,
   collectionFilter: "all",
   selectedCollectionItem: "remove",
@@ -1697,9 +1793,10 @@ const state = {
   unlockedCollection: loadUnlockedCollection(),
   equippedTools: loadEquippedTools(),
   enabledAbilities: loadEnabledAbilities(),
+  shouldPlayAnimalDrop: false,
   toolUses: {
     remove: 0,
-    undo: 0,
+    stimulant: 0,
   },
   scoreBurstToken: 0,
 };
@@ -1725,22 +1822,25 @@ const completeStars = document.querySelector("#completeStars");
 const completeScore = document.querySelector("#completeScore");
 const replayLevelBtn = document.querySelector("#replayLevelBtn");
 const nextLevelBtn = document.querySelector("#nextLevelBtn");
-const toast = document.querySelector("#toast");
 const homeBtn = document.querySelector("#homeBtn");
 const restartBtn = document.querySelector("#restartBtn");
 const removeTool = document.querySelector("#removeTool");
+const stimulantTool = document.querySelector("#stimulantTool");
 const firecrackerTool = document.querySelector("#firecrackerTool");
 const firecrackerEffect = document.querySelector("#firecrackerEffect");
-const undoTool = document.querySelector("#undoTool");
 const startGameBtn = document.querySelector("#startGameBtn");
 const startStarsButton = document.querySelector("#startStarsButton");
+const startStarsStatButton = document.querySelector("#startStarsStatButton");
 const startTotalStars = document.querySelector("#startTotalStars");
 const startClearedLevels = document.querySelector("#startClearedLevels");
+const startUnlockBadge = document.querySelector("#startUnlockBadge");
 const totalStarsButton = document.querySelector("#totalStarsButton");
+const completeUnlockNotice = document.querySelector("#completeUnlockNotice");
 const toolUnlockModal = document.querySelector("#toolUnlockModal");
 const toolUnlockStarCount = document.querySelector("#toolUnlockStarCount");
 const toolUnlockList = document.querySelector("#toolUnlockList");
 const collectionTabs = document.querySelectorAll(".collection-tab");
+const collectionRule = document.querySelector("#collectionRule");
 const toolGuideTitle = document.querySelector("#toolGuideTitle");
 const toolGuideMeta = document.querySelector("#toolGuideMeta");
 const toolGuideText = document.querySelector("#toolGuideText");
@@ -1748,6 +1848,7 @@ const collectionActionBtn = document.querySelector("#collectionActionBtn");
 const collectionReveal = document.querySelector("#collectionReveal");
 const collectionRevealIcon = document.querySelector("#collectionRevealIcon");
 const collectionRevealName = document.querySelector("#collectionRevealName");
+const collectionRevealMeta = document.querySelector("#collectionRevealMeta");
 const collectionRevealClose = document.querySelector("#collectionRevealClose");
 const closeToolUnlockBtn = document.querySelector("#closeToolUnlockBtn");
 
@@ -1755,6 +1856,7 @@ function initLevel(index = 0) {
   const levels = getGameLevels();
   const levelIndex = Math.max(0, Math.min(index, levels.length - 1));
   const level = levels[levelIndex];
+  const blackAnimalIndexes = getDecorativeBlackAnimalIndexes(levelIndex, level.animals);
   state.levelIndex = levelIndex;
   state.cleared = 0;
   state.combo = 0;
@@ -1762,17 +1864,17 @@ function initLevel(index = 0) {
   state.starThresholds = getStarThresholds(level);
   state.locked = false;
   state.runToken += 1;
+  state.shouldPlayAnimalDrop = true;
   state.toolMode = null;
-  state.undoSnapshot = null;
   state.firecrackerRunning = false;
   state.toolUses = {
     remove: 0,
-    undo: 0,
+    stimulant: 0,
   };
   state.animals = level.animals.map((animal, animalIndex) => ({
     ...animal,
     type: animal.type ?? level.animalType ?? "pig",
-    variant: animal.variant ?? getDecorativeAnimalVariant(levelIndex, animalIndex, animal),
+    variant: animal.variant ?? getDecorativeAnimalVariant(levelIndex, animalIndex, blackAnimalIndexes),
     id: `pig-${levelIndex}-${animalIndex}`,
     active: true,
     busy: false,
@@ -1797,13 +1899,13 @@ function initLevel(index = 0) {
   hideLevelCompleteModal();
   updateToolState();
   restoreFirecrackerPosition();
-  showToast("点击小猪，让它向前跑出草地");
 }
 
 function render() {
   pasture.innerHTML = "";
   renderPlayArea();
   const fragment = document.createDocumentFragment();
+  const shouldPlayAnimalDrop = state.shouldPlayAnimalDrop;
 
   state.animals
     .filter((animal) => animal.active)
@@ -1824,24 +1926,55 @@ function render() {
       pig.style.setProperty("--burst-color", animalType.burstColor);
       pig.style.setProperty("--stun-color", animalType.stunColor);
       pig.style.setProperty("--breath-delay", `${-((activeIndex % 9) * 0.18)}s`);
+      if (shouldPlayAnimalDrop) {
+        pig.classList.add("is-dropping");
+        pig.style.setProperty("--drop-delay", `${Math.min(activeIndex * 8, 320)}ms`);
+      }
       pig.setAttribute("aria-label", `小猪朝${DIRS[animal.dir].label}`);
       pig.innerHTML = PIG_MARKUP;
       bindAnimalInput(pig, animal.id);
       fragment.appendChild(pig);
     });
   pasture.appendChild(fragment);
+  if (shouldPlayAnimalDrop) {
+    state.shouldPlayAnimalDrop = false;
+    window.setTimeout(() => {
+      pasture.querySelectorAll(".pig.is-dropping").forEach((pig) => {
+        pig.classList.remove("is-dropping");
+        pig.style.removeProperty("--drop-delay");
+      });
+    }, 1040);
+  }
 }
 
-function getDecorativeAnimalVariant(levelIndex, animalIndex, animal) {
-  if (levelIndex < 14) return "pink";
+function getDecorativeBlackAnimalIndexes(levelIndex, animals) {
+  if (levelIndex < 3) return new Set();
 
-  const designSeed = (animal.x * 17 + animal.y * 29 + animalIndex * 7 + levelIndex * 11) % 100;
-  const isOuterFrame = animal.x <= 1 || animal.x >= BOARD.cols - 2 || animal.y <= 1 || animal.y >= BOARD.rows - 2;
-  const isAccent = (animal.x + animal.y * 3 + levelIndex + animalIndex) % 11 === 0;
+  const blackCount = Math.max(1, Math.round(animals.length * 0.1));
+  return new Set(
+    animals
+      .map((animal, animalIndex) => ({
+        animalIndex,
+        seed: getAnimalVariantSeed(levelIndex, animalIndex, animal),
+      }))
+      .sort((a, b) => a.seed - b.seed)
+      .slice(0, blackCount)
+      .map(({ animalIndex }) => animalIndex),
+  );
+}
 
-  if (isOuterFrame && isAccent) return "black";
-  if (designSeed < 12) return "black";
-  return "pink";
+function getDecorativeAnimalVariant(levelIndex, animalIndex, blackAnimalIndexes) {
+  if (levelIndex < 3) return "pink";
+  return blackAnimalIndexes.has(animalIndex) ? "black" : "pink";
+}
+
+function getAnimalVariantSeed(levelIndex, animalIndex, animal) {
+  let seed = (levelIndex + 1) * 73856093;
+  seed ^= (animalIndex + 1) * 19349663;
+  seed ^= (animal.x + 11) * 83492791;
+  seed ^= (animal.y + 17) * 2654435761;
+  seed ^= animal.dir.charCodeAt(0) * 97531;
+  return seed >>> 0;
 }
 
 function handleAnimalClick(id, element) {
@@ -1855,14 +1988,21 @@ function handleAnimalClick(id, element) {
   if (state.toolMode === "remove") {
     if (!canUseTool("remove")) {
       setToolMode(null);
-      showToast("移除次数已用完");
       return;
     }
-    saveUndoSnapshot();
     state.toolUses.remove += 1;
     removeAnimal(animal, element);
     setToolMode(null);
-    showToast(`已移除，剩余${getToolUsesLeft("remove")}次`);
+    return;
+  }
+
+  if (state.toolMode === "stimulant") {
+    if (!canUseTool("stimulant")) {
+      setToolMode(null);
+      return;
+    }
+    state.toolUses.stimulant += 1;
+    useStimulantOnAnimal(animal, element);
     return;
   }
 
@@ -1917,16 +2057,151 @@ function renderPlayArea() {
 
 function tryMove(animal, element) {
   const blocker = findBlocker(animal);
-  saveUndoSnapshot();
   if (blocker) {
     resetCombo();
     updateHud();
     crashAnimal(animal, element, blocker);
-    showToast("撞到前面的小猪了");
     return;
   }
 
   exitAnimal(animal, element);
+}
+
+function useStimulantOnAnimal(animal, element) {
+  const plan = getStimulantPlan(animal);
+  setToolMode(null);
+
+  if (plan.kind === "jump-exit") {
+    stimulantJumpAnimal(animal, element, plan, () => {
+      const animalType = getAnimalType(animal);
+      exitAnimal(animal, element, getStimulantMoveMsPerCell(animalType));
+    });
+    return;
+  }
+
+  if (plan.kind === "jump-crash") {
+    stimulantJumpAnimal(animal, element, plan, () => {
+      const animalType = getAnimalType(animal);
+      crashAnimal(animal, element, plan.nextBlocker, getStimulantCrashMsPerCell(animalType));
+    });
+    return;
+  }
+
+  if (plan.kind === "crash") {
+    stimulantCrashAnimal(animal, element, plan.blocker);
+    return;
+  }
+
+  stimulantDirectExitAnimal(animal, element);
+}
+
+function getStimulantPlan(animal) {
+  const dir = DIRS[animal.dir];
+  const occupiedCells = getActiveCellOccupancy(state.animals, animal);
+  let blockerStep = null;
+
+  for (let step = 1; ; step += 1) {
+    const movedAnimal = {
+      ...animal,
+      x: animal.x + dir.dx * step,
+      y: animal.y + dir.dy * step,
+    };
+    if (!isAnimalOnPlayableCells(movedAnimal)) {
+      return { kind: "exit" };
+    }
+
+    const headCell = {
+      x: animal.x + dir.dx * step,
+      y: animal.y + dir.dy * step,
+    };
+    if (occupiedCells.has(getCellKey(headCell))) {
+      blockerStep = step;
+      break;
+    }
+  }
+
+  const obstacleCells = countForwardObstacleCells(animal, blockerStep, occupiedCells);
+  if (obstacleCells !== 1) {
+    return {
+      kind: "crash",
+      blocker: { x: animal.x + dir.dx * blockerStep, y: animal.y + dir.dy * blockerStep, openCells: blockerStep - 1 },
+    };
+  }
+
+  const landingStep = blockerStep + obstacleCells + 1;
+  const landingAnimal = {
+    ...animal,
+    x: animal.x + dir.dx * landingStep,
+    y: animal.y + dir.dy * landingStep,
+  };
+
+  if (!isAnimalOnPlayableCells(landingAnimal)) {
+    return {
+      kind: "crash",
+      blocker: { x: animal.x + dir.dx * blockerStep, y: animal.y + dir.dy * blockerStep, openCells: blockerStep - 1 },
+    };
+  }
+
+  const landingBlocked = getFootprint(landingAnimal).some((cell) =>
+    occupiedCells.has(getCellKey(cell)),
+  );
+  if (landingBlocked) {
+    return {
+      kind: "crash",
+      blocker: { x: animal.x + dir.dx * blockerStep, y: animal.y + dir.dy * blockerStep, openCells: blockerStep - 1 },
+    };
+  }
+
+  const nextBlocker = findBlockerInAnimals(state.animals, landingAnimal, occupiedCells);
+  const jumpTakeoffStep = getJumpTakeoffStep(blockerStep);
+  const jumpPeakStep = getJumpPeakStepOverCell(animal, blockerStep);
+  if (nextBlocker) {
+    return {
+      kind: "jump-crash",
+      blockerStep,
+      jumpTakeoffStep,
+      jumpPeakStep,
+      landingStep,
+      nextBlocker,
+    };
+  }
+
+  return {
+    kind: "jump-exit",
+    blockerStep,
+    jumpTakeoffStep,
+    jumpPeakStep,
+    landingStep,
+  };
+}
+
+function getJumpTakeoffStep(blockerStep) {
+  return Math.max(0, blockerStep - 1);
+}
+
+function getJumpPeakStepOverCell(animal, blockerStep) {
+  const dir = DIRS[animal.dir];
+  const center = getAnimalCenter(animal);
+  const blockerCellCenter = {
+    x: animal.x + dir.dx * blockerStep + 0.5,
+    y: animal.y + dir.dy * blockerStep + 0.5,
+  };
+  return dir.dx !== 0
+    ? Math.abs(blockerCellCenter.x - center.x)
+    : Math.abs(blockerCellCenter.y - center.y);
+}
+
+function countForwardObstacleCells(animal, startStep, occupiedCells) {
+  const dir = DIRS[animal.dir];
+  let count = 0;
+  for (let step = startStep; ; step += 1) {
+    const cell = {
+      x: animal.x + dir.dx * step,
+      y: animal.y + dir.dy * step,
+    };
+    if (!occupiedCells.has(getCellKey(cell))) return count;
+    count += 1;
+  }
 }
 
 function findBlocker(animal) {
@@ -1965,23 +2240,21 @@ function getActiveCellOccupancy(animals, excludedAnimal = null) {
   return occupiedCells;
 }
 
-function exitAnimal(animal, element) {
+function exitAnimal(animal, element, msPerCell = null) {
   const dir = DIRS[animal.dir];
   const animalType = getAnimalType(animal);
-  const cellsToEdge = getExitTravelCells(animal);
-  const moveMs = getMoveDuration(animalType, cellsToEdge);
   const center = getAnimalCenter(animal);
-  const pathStart = {
-    x: center.x + dir.dx * cellsToEdge,
-    y: center.y + dir.dy * cellsToEdge,
-  };
-  const pathEntry = getPathEntryPoint(pathStart, animal.dir);
+  const pathEntry = getPathEntryPoint(center, animal.dir);
+  const cellsToEntry = getExitAnimationTravelCells(animal, pathEntry);
+  const moveMs = getMoveDuration(animalType, cellsToEntry, msPerCell ?? animalType.moveMsPerCell);
   const runToken = state.runToken;
 
   setMotion(element, moveMs, MOVE_EASING.run);
-  setRunOffset(element, dir, cellsToEdge);
+  setRunOffset(element, dir, cellsToEntry);
+  element.classList.remove("is-dropping");
+  element.style.removeProperty("--drop-delay");
   element.classList.add("is-leaving", "is-running");
-  spawnRunTrail(center, dir, cellsToEdge, animalType);
+  spawnRunTrail(center, dir, cellsToEntry, animalType, msPerCell ?? animalType.moveMsPerCell);
 
   animal.active = false;
   state.cleared += 1;
@@ -1996,6 +2269,96 @@ function exitAnimal(animal, element) {
   }, moveMs);
 }
 
+function stimulantDirectExitAnimal(animal, element) {
+  const animalType = getAnimalType(animal);
+  const boostMsPerCell = getStimulantMoveMsPerCell(animalType);
+  element.classList.add("is-boosted");
+  window.setTimeout(() => {
+    if (!animal.active || animal.busy) return;
+    exitAnimal(animal, element, boostMsPerCell);
+  }, STIMULANT_CHARGE_MS);
+}
+
+function stimulantCrashAnimal(animal, element, blocker) {
+  const animalType = getAnimalType(animal);
+  const crashMsPerCell = getStimulantCrashMsPerCell(animalType);
+  element.classList.remove("is-dropping");
+  element.style.removeProperty("--drop-delay");
+  element.classList.add("is-boosted");
+  window.setTimeout(() => {
+    if (!animal.active || animal.busy) return;
+    element.classList.add("is-running");
+    crashAnimal(animal, element, blocker, crashMsPerCell);
+  }, STIMULANT_CHARGE_MS);
+}
+
+function stimulantJumpAnimal(animal, element, plan, onLanded) {
+  const dir = DIRS[animal.dir];
+  const animalType = getAnimalType(animal);
+  const center = getAnimalCenter(animal);
+  const jumpCells = plan.landingStep;
+  const jumpTakeoffStep = plan.jumpTakeoffStep ?? getJumpTakeoffStep(plan.blockerStep ?? 1);
+  const jumpPeakStep = plan.jumpPeakStep ?? plan.blockerStep;
+  const boostMsPerCell = getStimulantMoveMsPerCell(animalType);
+  const approachMs = getMoveDuration(animalType, jumpTakeoffStep, boostMsPerCell);
+  const riseCells = Math.max(0.45, jumpPeakStep - jumpTakeoffStep);
+  const riseMs = Math.max(150, getMoveDuration(animalType, riseCells, boostMsPerCell));
+  const fallCells = Math.max(0.8, jumpCells - jumpPeakStep);
+  const fallMs = Math.max(160, getMoveDuration(animalType, fallCells, boostMsPerCell));
+  const runToken = state.runToken;
+
+  element.classList.remove("is-dropping");
+  element.style.removeProperty("--drop-delay");
+  element.classList.add("is-boosted");
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken || !animal.active || animal.busy) return;
+    animal.busy = true;
+    element.classList.add("is-running");
+    spawnRunTrail(center, dir, jumpCells, animalType, boostMsPerCell);
+    setMotion(element, approachMs, MOVE_EASING.run);
+    setRunOffset(element, dir, jumpTakeoffStep);
+  }, STIMULANT_CHARGE_MS);
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken || !animal.active) return;
+    element.classList.add("is-jumping", "is-jump-rising");
+    setMotion(element, riseMs, "cubic-bezier(0.22, 0.78, 0.18, 1)");
+    setRunOffset(element, dir, jumpPeakStep);
+  }, STIMULANT_CHARGE_MS + approachMs);
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken || !animal.active) return;
+    element.classList.remove("is-jump-rising");
+    element.classList.add("is-jump-falling");
+    setMotion(element, fallMs, "cubic-bezier(0.22, 0.76, 0.2, 1)");
+    setRunOffset(element, dir, jumpCells);
+  }, STIMULANT_CHARGE_MS + approachMs + riseMs);
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken || !animal.active) return;
+    animal.x += dir.dx * jumpCells;
+    animal.y += dir.dy * jumpCells;
+    animal.busy = false;
+    element.classList.remove("is-boosted", "is-jumping", "is-jump-rising", "is-jump-falling");
+    settleBoostedAnimalElement(animal, element);
+    window.requestAnimationFrame(() => {
+      if (runToken !== state.runToken || !animal.active) return;
+      onLanded();
+    });
+  }, STIMULANT_CHARGE_MS + approachMs + riseMs + fallMs);
+}
+
+function settleBoostedAnimalElement(animal, element) {
+  const center = getAnimalCenter(animal);
+  element.style.setProperty("--x", center.x);
+  element.style.setProperty("--y", center.y);
+  element.style.setProperty("--z", Math.round(center.y * 2 + 10));
+  element.style.setProperty("--move-ms", "0ms");
+  element.style.setProperty("--run-x", "0px");
+  element.style.setProperty("--run-y", "0px");
+}
+
 function clearPathRunners() {
   document.querySelectorAll(".path-runner").forEach((runner) => runner.remove());
 }
@@ -2007,9 +2370,12 @@ function createPathRunner(sourceElement, start, dirKey) {
     "is-crashing",
     "is-stunned",
     "is-removed",
-    "is-blocked",
     "is-pressing",
     "is-activated",
+    "is-boosted",
+    "is-jumping",
+    "is-jump-rising",
+    "is-jump-falling",
   );
   runner.classList.add("path-runner", "is-running");
   runner.type = "button";
@@ -2028,7 +2394,7 @@ async function runPathToGate(runner, start, dirKey, animalType, runToken) {
   for (let index = 1; index < route.length; index += 1) {
     if (runToken !== state.runToken || !runner.isConnected) return;
     const next = route[index];
-    await movePathRunner(runner, current, next, animalType);
+    await movePathRunner(runner, current, next, animalType, index);
     current = next;
     if (PATH_EXIT.turnPauseMs > 0) {
       await wait(PATH_EXIT.turnPauseMs);
@@ -2044,11 +2410,12 @@ async function runPathToGate(runner, start, dirKey, animalType, runToken) {
   }, PATH_EXIT.fadeMs);
 }
 
-async function movePathRunner(runner, from, to, animalType) {
+async function movePathRunner(runner, from, to, animalType, segmentIndex = 1) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const cells = Math.hypot(dx, dy);
-  const durationMs = Math.max(80, getMoveDuration(animalType, cells));
+  const pathMsPerCell = getPathMsPerCell(animalType, segmentIndex);
+  const durationMs = Math.max(48, getMoveDuration(animalType, cells, pathMsPerCell));
   const segmentDir = getPathSegmentDir(dx, dy);
 
   runner.setAttribute("aria-label", `小猪朝${DIRS[segmentDir].label}`);
@@ -2059,10 +2426,16 @@ async function movePathRunner(runner, from, to, animalType) {
   await wait(durationMs);
 }
 
+function getPathMsPerCell(animalType, segmentIndex) {
+  if (segmentIndex <= 1) return Math.round((animalType.moveMsPerCell + animalType.pathMsPerCell) / 2);
+  if (segmentIndex === 2) return Math.round((animalType.moveMsPerCell + animalType.pathMsPerCell * 2) / 3);
+  return animalType.pathMsPerCell;
+}
+
 function getPathExitRoute(start, dirKey) {
   const offset = PATH_EXIT.roadOffsetCells;
   const topY = PATH_EXIT.gateYCells;
-  const bottomY = BOARD.rows + offset;
+  const bottomY = getBottomPathY();
   const leftX = -offset;
   const rightX = BOARD.cols + offset;
   const gate = { x: BOARD.cols / 2, y: topY };
@@ -2095,12 +2468,16 @@ function getPathEntryPoint(start, dirKey) {
     return { x: start.x, y: PATH_EXIT.gateYCells };
   }
   if (dirKey === "down") {
-    return { x: start.x, y: BOARD.rows + offset };
+    return { x: start.x, y: getBottomPathY() };
   }
   if (dirKey === "left") {
     return { x: -offset, y: start.y };
   }
   return { x: BOARD.cols + offset, y: start.y };
+}
+
+function getBottomPathY() {
+  return BOARD.rows + PATH_EXIT.bottomEntryOffsetCells;
 }
 
 function pushRoutePoint(route, point) {
@@ -2151,7 +2528,6 @@ function removeAnimal(animal, element) {
   element.classList.add("is-removed");
   animal.active = false;
   state.cleared += 1;
-  state.score += SCORE_RULES.removeScore;
   updateHud();
 
   window.setTimeout(() => {
@@ -2160,14 +2536,16 @@ function removeAnimal(animal, element) {
   }, 280);
 }
 
-function crashAnimal(animal, element, blocker) {
+function crashAnimal(animal, element, blocker, msPerCell = null) {
   animal.busy = true;
   const dir = DIRS[animal.dir];
   const animalType = getAnimalType(animal);
   const travelCells = blocker.openCells;
   const bumpCells = travelCells + 0.34;
   const center = getAnimalCenter(animal);
-  const travelMs = getCrashMoveDuration(animalType, travelCells);
+  const travelMs = msPerCell === null
+    ? getCrashMoveDuration(animalType, travelCells)
+    : getMoveDuration(animalType, travelCells, msPerCell);
   const bumpMs = animalType.crashBumpMs;
   const settleMs = animalType.crashBumpMs;
 
@@ -2179,7 +2557,7 @@ function crashAnimal(animal, element, blocker) {
     dir,
     Math.max(travelCells, 1),
     animalType,
-    animalType.crashMoveMsPerCell,
+    msPerCell ?? animalType.crashMoveMsPerCell,
   );
   setMotion(element, travelMs, MOVE_EASING.crashTravel);
   setRunOffset(element, dir, travelCells);
@@ -2210,7 +2588,7 @@ function crashAnimal(animal, element, blocker) {
 
 function settleCrashedAnimalElement(animal, element) {
   const center = getAnimalCenter(animal);
-  element.classList.remove("is-crashing", "is-pressing", "is-activated");
+  element.classList.remove("is-crashing", "is-pressing", "is-activated", "is-boosted", "is-running");
   element.classList.add("is-stunned");
   element.style.setProperty("--x", center.x);
   element.style.setProperty("--y", center.y);
@@ -2235,12 +2613,10 @@ function checkLevelComplete() {
 async function useFirecracker() {
   if (state.firecrackerRunning || state.locked) return;
   if (!isAbilityUsable("firecracker")) {
-    showToolLockedToast("firecracker");
     return;
   }
   const escapeTargets = findFirecrackerEscapableAnimals();
   if (escapeTargets.length === 0) {
-    showToast("暂时没有能直接逃离的小猪");
     return;
   }
 
@@ -2248,11 +2624,9 @@ async function useFirecracker() {
   state.firecrackerRunning = true;
   updateToolState();
   playFirecrackerEffect();
-  await wait(420);
+  await wait(FIRECRACKER_START_DELAY_MS);
 
   const runToken = state.runToken;
-  let escaped = 0;
-
   try {
     for (const escapeTarget of escapeTargets) {
       if (runToken !== state.runToken || state.locked) break;
@@ -2260,17 +2634,19 @@ async function useFirecracker() {
       if (!animal.active || animal.busy || !element.isConnected) continue;
 
       const animalType = getAnimalType(animal);
-      const travelCells = getExitTravelCells(animal);
-      exitAnimal(animal, element);
-      escaped += 1;
-      await wait(getMoveDuration(animalType, travelCells) + 140);
+      const center = getAnimalCenter(animal);
+      const travelCells = getExitAnimationTravelCells(
+        animal,
+        getPathEntryPoint(center, animal.dir),
+      );
+      const firecrackerMsPerCell = getFirecrackerMoveMsPerCell(animalType);
+      exitAnimal(animal, element, firecrackerMsPerCell);
+      const exitMs = getMoveDuration(animalType, travelCells, firecrackerMsPerCell);
+      await wait(Math.max(FIRECRACKER_CHAIN_GAP_MS, Math.round(exitMs * 0.42)));
     }
   } finally {
     state.firecrackerRunning = false;
     updateToolState();
-    if (escaped > 0) {
-      showToast(`炮仗响了，逃走${escaped}只`);
-    }
   }
 }
 
@@ -2404,6 +2780,15 @@ function getExitTravelCells(animal) {
   }
 }
 
+function getExitAnimationTravelCells(animal, pathEntry) {
+  const dir = DIRS[animal.dir];
+  const center = getAnimalCenter(animal);
+  const projectedCells = dir.dx !== 0
+    ? Math.abs(pathEntry.x - center.x)
+    : Math.abs(pathEntry.y - center.y);
+  return Math.max(0.2, projectedCells);
+}
+
 function getAnimalCenter(animal) {
   const cells = getFootprint(animal);
   const x = cells.reduce((sum, cell) => sum + cell.x + 0.5, 0) / cells.length;
@@ -2423,6 +2808,18 @@ function getCrashMoveDuration(animalType, cells) {
   return getMoveDuration(animalType, cells, animalType.crashMoveMsPerCell);
 }
 
+function getStimulantMoveMsPerCell(animalType) {
+  return Math.max(32, Math.round(animalType.moveMsPerCell * STIMULANT_MOVE_MULTIPLIER));
+}
+
+function getStimulantCrashMsPerCell(animalType) {
+  return Math.max(54, Math.round(animalType.crashMoveMsPerCell * STIMULANT_CRASH_MULTIPLIER));
+}
+
+function getFirecrackerMoveMsPerCell(animalType) {
+  return Math.max(38, Math.round(animalType.moveMsPerCell * FIRECRACKER_MOVE_MULTIPLIER));
+}
+
 function setMotion(element, durationMs, easing) {
   element.style.setProperty("--move-ms", `${durationMs}ms`);
   element.style.setProperty("--move-ease", easing);
@@ -2438,7 +2835,7 @@ function updateHud() {
   scoreCount.textContent = state.score;
   starTarget.textContent = `3★${formatScoreShort(state.starThresholds[2])}`;
   totalStarsCount.textContent = getTotalStars();
-  updateUndoState();
+  renderUnlockHints();
 }
 
 function showLevelCompleteModal(stars) {
@@ -2456,6 +2853,7 @@ function showLevelCompleteModal(stars) {
   completeStars.style.setProperty("--star-progress", `${(stars - 1) * 36}%`);
   completeStars.setAttribute("aria-label", `本关获得${stars}星`);
   completeScore.textContent = `${state.score}分`;
+  renderCompleteUnlockNotice();
   const hasNextLevel = state.levelIndex + 1 < getGameLevels().length;
   nextLevelBtn.disabled = !hasNextLevel;
   levelCompleteModal.hidden = false;
@@ -2546,13 +2944,23 @@ function showComboBreak() {
 
 function getStarThresholds(level) {
   if (level.starThresholds) return level.starThresholds;
-  const threeStarScore = roundScoreThreshold(
+  const perfectScore = getPerfectScoreForLevel(level);
+  const baseThreeStarScore = roundScoreThreshold(
     level.animals.length * getAverageScorePerAnimal(
       getThreeStarAverageCombo(level),
     ),
   );
+  const baseTwoStarScore = Math.min(
+    roundScoreThreshold(baseThreeStarScore * STAR_RULES.twoStarRatio),
+    baseThreeStarScore - STAR_RULES.roundTo,
+  );
+  const threeStarScore = Math.min(
+    raiseStarThreshold(baseThreeStarScore),
+    floorScoreThreshold(perfectScore * STAR_RULES.threeStarMaxPerfectRatio),
+  );
   const twoStarScore = Math.min(
-    roundScoreThreshold(threeStarScore * STAR_RULES.twoStarRatio),
+    raiseStarThreshold(baseTwoStarScore),
+    floorScoreThreshold(perfectScore * STAR_RULES.twoStarMaxPerfectRatio),
     threeStarScore - STAR_RULES.roundTo,
   );
   return [
@@ -2560,6 +2968,18 @@ function getStarThresholds(level) {
     twoStarScore,
     threeStarScore,
   ];
+}
+
+function raiseStarThreshold(score) {
+  return roundScoreThreshold(score * STAR_RULES.thresholdMultiplier);
+}
+
+function getPerfectScoreForLevel(level) {
+  let score = 0;
+  for (let combo = 1; combo <= level.animals.length; combo += 1) {
+    score += getExitScoreForCombo(combo);
+  }
+  return score;
 }
 
 function getThreeStarAverageCombo(level) {
@@ -2584,6 +3004,10 @@ function getAverageScorePerAnimal(averageCombo) {
 
 function roundScoreThreshold(score) {
   return Math.round(score / STAR_RULES.roundTo) * STAR_RULES.roundTo;
+}
+
+function floorScoreThreshold(score) {
+  return Math.floor(score / STAR_RULES.roundTo) * STAR_RULES.roundTo;
 }
 
 function getEarnedStars(score, thresholds, isComplete = false) {
@@ -2693,7 +3117,7 @@ function saveUnlockedCollection() {
       JSON.stringify([...state.unlockedCollection]),
     );
   } catch {
-    showToast("收藏记录暂时无法保存");
+    // 收藏记录保存失败不影响本局游玩。
   }
 }
 
@@ -2725,7 +3149,7 @@ function saveEquippedTools() {
       JSON.stringify([...state.equippedTools]),
     );
   } catch {
-    showToast("道具携带记录暂时无法保存");
+    // 道具携带记录保存失败不影响本局游玩。
   }
 }
 
@@ -2754,7 +3178,7 @@ function saveEnabledAbilities() {
       JSON.stringify([...state.enabledAbilities]),
     );
   } catch {
-    showToast("能力开关暂时无法保存");
+    // 能力开关保存失败不影响本局游玩。
   }
 }
 
@@ -2773,7 +3197,7 @@ function saveProgress() {
       JSON.stringify(state.bestByLevel),
     );
   } catch {
-    showToast("本地记录暂时无法保存");
+    // 本地进度保存失败不影响本局游玩。
   }
 }
 
@@ -2924,19 +3348,6 @@ function getTotalStars() {
   );
 }
 
-let toastTimer = 0;
-function showToast(message) {
-  window.clearTimeout(toastTimer);
-  toast.classList.remove("is-visible");
-  return;
-  toast.textContent = message;
-  toast.classList.add("is-visible");
-  window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => {
-    toast.classList.remove("is-visible");
-  }, 1700);
-}
-
 restartBtn.addEventListener("click", () => {
   initLevel(state.levelIndex);
 });
@@ -2951,17 +3362,22 @@ levelSelect.addEventListener("change", () => {
 
 removeTool.addEventListener("click", () => {
   if (state.locked) return;
-  if (!isToolUsable("remove")) {
-    showToolLockedToast("remove");
-    return;
-  }
+  if (!isToolUsable("remove")) return;
   if (!hasToolUsesLeft("remove")) {
-    showToast("移除次数已用完");
     setToolMode(null);
     return;
   }
   setToolMode(state.toolMode === "remove" ? null : "remove");
-  showToast(state.toolMode === "remove" ? "选择一只小猪移除" : "已取消移除");
+});
+
+stimulantTool.addEventListener("click", () => {
+  if (state.locked) return;
+  if (!isToolUsable("stimulant")) return;
+  if (!hasToolUsesLeft("stimulant")) {
+    setToolMode(null);
+    return;
+  }
+  setToolMode(state.toolMode === "stimulant" ? null : "stimulant");
 });
 
 firecrackerTool.addEventListener("click", (event) => {
@@ -2977,14 +3393,6 @@ bindFirecrackerDrag();
 
 window.addEventListener("resize", () => {
   restoreFirecrackerPosition();
-});
-
-undoTool?.addEventListener("click", () => {
-  if (!isToolUnlocked("undo")) {
-    showToolLockedToast("undo");
-    return;
-  }
-  undoLastAction();
 });
 
 replayLevelBtn.addEventListener("click", () => {
@@ -3005,7 +3413,15 @@ startStarsButton.addEventListener("click", () => {
   openToolUnlockModal();
 });
 
+startStarsStatButton?.addEventListener("click", () => {
+  openToolUnlockModal();
+});
+
 totalStarsButton.addEventListener("click", () => {
+  openToolUnlockModal();
+});
+
+completeUnlockNotice?.addEventListener("click", () => {
   openToolUnlockModal();
 });
 
@@ -3083,72 +3499,35 @@ function updateToolState() {
   );
   removeTool.querySelector(".tool-count").textContent =
     `${getToolUsesLeft("remove")}次`;
+  stimulantTool.hidden = !isToolUsable("stimulant");
+  stimulantTool.disabled =
+    state.locked || !isToolUsable("stimulant") || !hasToolUsesLeft("stimulant");
+  stimulantTool.classList.toggle("is-selected", state.toolMode === "stimulant");
+  stimulantTool.classList.toggle(
+    "is-locked",
+    !isToolUsable("stimulant") || !hasToolUsesLeft("stimulant"),
+  );
+  stimulantTool.setAttribute(
+    "aria-pressed",
+    state.toolMode === "stimulant" ? "true" : "false",
+  );
+  stimulantTool.querySelector(".tool-count").textContent =
+    `${getToolUsesLeft("stimulant")}次`;
+  const firecrackerVisible = isAbilityUsable("firecracker");
+  firecrackerTool.hidden = !firecrackerVisible;
+  firecrackerEffect.hidden = firecrackerEffect.hidden || !firecrackerVisible;
   firecrackerTool.disabled =
-    state.locked || !isAbilityUsable("firecracker") || state.firecrackerRunning;
+    !firecrackerVisible || state.locked || state.firecrackerRunning;
   firecrackerTool.classList.toggle(
     "is-locked",
-    !isAbilityUsable("firecracker"),
+    !firecrackerVisible,
   );
   firecrackerTool.classList.toggle("is-running", state.firecrackerRunning);
-  updateUndoState();
-}
-
-function saveUndoSnapshot() {
-  state.undoSnapshot = {
-    cleared: state.cleared,
-    combo: state.combo,
-    score: state.score,
-    toolUses: { ...state.toolUses },
-    animals: state.animals.map((animal) => ({
-      ...animal,
-      active: animal.active,
-      busy: false,
-      stunned: animal.stunned,
-    })),
-  };
-  updateUndoState();
-}
-
-function undoLastAction() {
-  if (state.locked || !state.undoSnapshot) {
-    showToast("暂无可撤销操作");
-    return;
-  }
-
-  const snapshot = state.undoSnapshot;
-  const nextUndoUses = state.toolUses.undo + 1;
-  state.cleared = snapshot.cleared;
-  state.combo = snapshot.combo;
-  state.score = snapshot.score + SCORE_RULES.undoScore;
-  state.toolMode = null;
-  state.undoSnapshot = null;
-  state.toolUses = {
-    ...snapshot.toolUses,
-    undo: nextUndoUses,
-  };
-  state.animals = snapshot.animals.map((animal) => ({ ...animal, busy: false }));
-  state.animalById = new Map(state.animals.map((animal) => [animal.id, animal]));
-  state.runToken += 1;
-  clearPathRunners();
-
-  hideLevelCompleteModal();
-  hideComboBurst();
-  render();
-  updateHud();
-  updateToolState();
-  showToast("已撤销，-500分");
-}
-
-function updateUndoState() {
-  if (!undoTool) return;
-  undoTool.disabled = state.locked || !state.undoSnapshot || !isToolUnlocked("undo");
-  undoTool.classList.toggle("is-locked", !isToolUnlocked("undo"));
-  undoTool.querySelector(".tool-count").textContent = `${SCORE_RULES.undoScore}分`;
 }
 
 function canUseTool(tool) {
   if (tool === "remove") return isToolUsable("remove") && hasToolUsesLeft("remove");
-  if (tool === "undo") return isToolUnlocked("undo");
+  if (tool === "stimulant") return isToolUsable("stimulant") && hasToolUsesLeft("stimulant");
   return false;
 }
 
@@ -3175,29 +3554,9 @@ function isAbilityUsable(key) {
 }
 
 function getToolStarsLeft(tool) {
-  const unlock = TOOL_UNLOCKS[tool];
+  const unlock = COLLECTION_ITEMS[tool];
   if (!unlock) return 0;
   return Math.max(0, unlock.requiredStars - getTotalStars());
-}
-
-function showToolLockedToast(tool) {
-  const unlock = TOOL_UNLOCKS[tool];
-  if (!unlock) return;
-  if (isCollectionItemUnlocked(tool)) {
-    if (unlock.type === "tool" && !state.equippedTools.has(tool)) {
-      showToast(`${unlock.name}未携带`);
-      return;
-    }
-    if (unlock.type === "ability" && !state.enabledAbilities.has(tool)) {
-      showToast(`${unlock.name}已关闭`);
-      return;
-    }
-  }
-  if (canUnlockCollectionItem(tool)) {
-    showToast(`${unlock.name}可在收藏馆解锁`);
-    return;
-  }
-  showToast(`${unlock.name}还差${getToolStarsLeft(tool)}★解锁`);
 }
 
 function getCellKey(cell) {
@@ -3219,6 +3578,7 @@ function renderStartScreen() {
     (level) => (state.bestByLevel[level.id]?.stars ?? 0) > 0,
   ).length;
   startClearedLevels.textContent = clearedLevels;
+  renderUnlockHints();
   if (!toolUnlockModal.hidden) {
     renderToolUnlockModal();
   }
@@ -3237,9 +3597,11 @@ function hideToolUnlockModal() {
 function renderToolUnlockModal() {
   const totalStars = getTotalStars();
   toolUnlockStarCount.textContent = `${totalStars}★`;
+  renderUnlockHints();
   collectionTabs.forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.filter === state.collectionFilter);
   });
+  renderCollectionRule();
 
   const toolSlots = getFilteredCollectionItems();
   if (!toolSlots.some((slot) => slot.key === state.selectedCollectionItem)) {
@@ -3334,10 +3696,21 @@ function getCollectionEmptyTitle() {
 }
 
 function getCollectionEmptyText() {
-  if (state.collectionFilter === "tool") return `道具解锁后会出现在这里。每关最多携带${MAX_EQUIPPED_TOOLS}个道具。`;
+  if (state.collectionFilter === "tool") return "道具解锁后会出现在这里。";
   if (state.collectionFilter === "ability") return "能力解锁后会出现在这里，可以在详情里启用或关闭。";
   if (state.collectionFilter === "skin") return "皮肤解锁后会出现在这里，可以在详情里选择使用。";
   return "先去全部页查看可解锁内容。";
+}
+
+function renderCollectionRule() {
+  if (!collectionRule) return;
+  if (state.collectionFilter === "tool") {
+    collectionRule.textContent = `每关最多携带${MAX_EQUIPPED_TOOLS}个道具，当前已携带${state.equippedTools.size}个。`;
+    collectionRule.hidden = false;
+    return;
+  }
+  collectionRule.hidden = true;
+  collectionRule.textContent = "";
 }
 
 function getDefaultCollectionItemKey() {
@@ -3380,6 +3753,48 @@ function isCollectionItemUnlocked(key) {
   return Boolean(COLLECTION_ITEMS[key]) && state.unlockedCollection.has(key);
 }
 
+function getReadyUnlockItems() {
+  return Object.entries(COLLECTION_ITEMS)
+    .filter(([key]) => canUnlockCollectionItem(key))
+    .map(([key, item]) => ({ key, item }));
+}
+
+function getReadyUnlockSummary() {
+  const readyItems = getReadyUnlockItems();
+  if (readyItems.length === 0) {
+    return { count: 0, text: "" };
+  }
+  const firstItem = readyItems[0].item;
+  return {
+    count: readyItems.length,
+    text: readyItems.length === 1
+      ? `${firstItem.name}可解锁`
+      : `${readyItems.length}个新内容可解锁`,
+  };
+}
+
+function renderUnlockHints() {
+  const summary = getReadyUnlockSummary();
+  const hasReadyUnlock = summary.count > 0;
+  startStarsStatButton?.classList.toggle("has-unlock-ready", hasReadyUnlock);
+  startStarsButton?.classList.toggle("has-unlock-ready", hasReadyUnlock);
+  totalStarsButton?.classList.toggle("has-unlock-ready", hasReadyUnlock);
+  if (startUnlockBadge) {
+    startUnlockBadge.hidden = !hasReadyUnlock;
+    startUnlockBadge.textContent = summary.count > 1 ? String(summary.count) : "新";
+  }
+  renderCompleteUnlockNotice(summary);
+}
+
+function renderCompleteUnlockNotice(summary = getReadyUnlockSummary()) {
+  if (!completeUnlockNotice) return;
+  const hasReadyUnlock = summary.count > 0;
+  completeUnlockNotice.hidden = !hasReadyUnlock;
+  completeUnlockNotice.textContent = hasReadyUnlock
+    ? `${summary.text}，去收藏馆`
+    : "";
+}
+
 function canUnlockCollectionItem(key) {
   const item = COLLECTION_ITEMS[key];
   return Boolean(item)
@@ -3391,7 +3806,7 @@ function getCollectionGuideText(key, item, unlocked, ready) {
   if (!item) return "这个格子还没有配置内容。";
   if (unlocked && item.placeholder) return "这个格子已解锁，具体道具规则后续配置。";
   if (unlocked && item.type === "tool") {
-    return `${item.guide} 每关最多携带${MAX_EQUIPPED_TOOLS}个道具，当前已携带${state.equippedTools.size}个。`;
+    return item.guide;
   }
   if (unlocked && item.type === "ability") {
     return `${item.guide} 你可以在这里启用或关闭这个能力。`;
@@ -3467,9 +3882,12 @@ function unlockCollectionItem(key) {
   }
   saveUnlockedCollection();
   renderToolUnlockModal();
+  renderUnlockHints();
   updateToolState();
   triggerCollectionUnlockAnimation(key);
-  showCollectionReveal(key);
+  window.setTimeout(() => {
+    showCollectionReveal(key);
+  }, 420);
 }
 
 function toggleEquippedTool(key) {
@@ -3511,9 +3929,11 @@ function triggerCollectionUnlockAnimation(key) {
 function showCollectionReveal(key) {
   const item = COLLECTION_ITEMS[key];
   if (!item) return;
+  hideCollectionReveal();
   collectionRevealIcon.innerHTML = getCollectionIconMarkup(item);
   collectionRevealIcon.classList.toggle("has-image", Boolean(item.image));
   collectionRevealName.textContent = item.name;
+  collectionRevealMeta.textContent = `获得${item.typeName}`;
   collectionReveal.hidden = false;
   collectionReveal.classList.remove("is-playing");
   void collectionReveal.offsetWidth;
