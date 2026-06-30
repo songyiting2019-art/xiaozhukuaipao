@@ -2135,15 +2135,8 @@ function getStimulantPlan(animal) {
     y: animal.y + dir.dy * landingStep,
   };
 
-  if (!isAnimalOnPlayableCells(landingAnimal)) {
-    return {
-      kind: "crash",
-      blocker: { x: animal.x + dir.dx * blockerStep, y: animal.y + dir.dy * blockerStep, openCells: blockerStep - 1 },
-    };
-  }
-
   const landingBlocked = getFootprint(landingAnimal).some((cell) =>
-    occupiedCells.has(getCellKey(cell)),
+    isInsideBoardCell(cell.x, cell.y) && occupiedCells.has(getCellKey(cell)),
   );
   if (landingBlocked) {
     return {
@@ -2155,6 +2148,17 @@ function getStimulantPlan(animal) {
   const nextBlocker = findBlockerInAnimals(state.animals, landingAnimal, occupiedCells);
   const jumpTakeoffStep = getJumpTakeoffStep(blockerStep);
   const jumpPeakStep = getJumpPeakStepOverCell(animal, blockerStep);
+
+  if (!isAnimalOnPlayableCells(landingAnimal)) {
+    return {
+      kind: "jump-exit",
+      blockerStep,
+      jumpTakeoffStep,
+      jumpPeakStep,
+      landingStep,
+    };
+  }
+
   if (nextBlocker) {
     return {
       kind: "jump-crash",
