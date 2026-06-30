@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小猪快跑音效预览</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        background: #f6f3e9;
+        color: #2b2418;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0)),
+          #f6f3e9;
+      }
+
+      main {
+        width: min(1080px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 28px 0 44px;
+      }
+
+      header {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 5vw, 46px);
+        line-height: 1.05;
+      }
+
+      p {
+        margin: 0;
+        color: #6d604e;
+        line-height: 1.65;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin: 18px 0 22px;
+        padding: 12px;
+        border: 1px solid rgba(78, 63, 39, 0.14);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .toolbar button,
+      .sound-card button {
+        min-height: 42px;
+        border: 0;
+        border-radius: 8px;
+        padding: 0 16px;
+        background: #3d6f51;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .toolbar button.secondary {
+        background: #805f35;
+      }
+
+      .toolbar label {
+        display: inline-flex;
+        gap: 10px;
+        align-items: center;
+        color: #4f4435;
+        font-weight: 700;
+      }
+
+      input[type="range"] {
+        width: min(260px, 42vw);
+        accent-color: #3d6f51;
+      }
+
+      .section {
+        margin-top: 22px;
+      }
+
+      h2 {
+        margin: 0 0 12px;
+        font-size: 20px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+      }
+
+      .sound-card {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        min-height: 150px;
+        padding: 16px;
+        border: 1px solid rgba(78, 63, 39, 0.13);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 10px 30px rgba(61, 47, 26, 0.07);
+      }
+
+      .sound-card.is-playing {
+        outline: 3px solid rgba(67, 122, 88, 0.22);
+      }
+
+      .sound-copy {
+        display: grid;
+        gap: 7px;
+      }
+
+      .sound-name {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.25;
+      }
+
+      .sound-file {
+        color: #8a5b30;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .tag {
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: #e7f0dc;
+        color: #405832;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .tag.low {
+        background: #f2ead7;
+        color: #6c532a;
+      }
+
+      .tag.key {
+        background: #f2dfdc;
+        color: #823f35;
+      }
+
+      .now-playing {
+        min-height: 24px;
+        color: #3d6f51;
+        font-weight: 800;
+      }
+
+      @media (max-width: 640px) {
+        main {
+          width: min(100% - 20px, 1080px);
+          padding-top: 18px;
+        }
+
+        .sound-card {
+          grid-template-columns: 1fr;
+        }
+
+        .sound-card button {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>小猪快跑音效预览 v1</h1>
+        <p>候选音效都在 assets/audio/preview/，原始 wav 在 assets/audio/source/。本页只用于试听，不接入正式游戏流程。</p>
+      </header>
+
+      <div class="toolbar">
+        <label>
+          试听音量
+          <input id="volumeControl" type="range" min="0" max="1" step="0.01" value="0.72" />
+        </label>
+        <div>
+          <button id="stopAllBtn" class="secondary" type="button">停止全部</button>
+        </div>
+      </div>
+
+      <p class="now-playing" id="nowPlaying" aria-live="polite"></p>
+
+      <section class="section" aria-labelledby="bgmTitle">
+        <h2 id="bgmTitle">背景音乐</h2>
+        <div class="grid" id="bgmGrid"></div>
+      </section>
+
+      <section class="section" aria-labelledby="sfxTitle">
+        <h2 id="sfxTitle">游戏音效</h2>
+        <div class="grid" id="sfxGrid"></div>
+      </section>
+    </main>
+
+    <script>
+      const sounds = [
+        {
+          group: "bgm",
+          name: "主页轻农场",
+          file: "../assets/audio/preview/bgm-home-farm-light-v1.mp3",
+          use: "开始页、收藏馆轻氛围",
+          feel: "温暖、轻快、低存在感",
+          repeat: "适合循环，正式接入前需要再做无缝循环点",
+          tag: "low",
+        },
+        {
+          group: "bgm",
+          name: "关卡草地氛围 v2",
+          file: "../assets/audio/preview/bgm-game-pasture-cheer-v2.mp3",
+          use: "正式游玩页底层背景",
+          feel: "更轻快，但仍给动作音效留空间",
+          repeat: "适合循环，音量建议低于音效很多",
+          tag: "low",
+        },
+        {
+          group: "sfx",
+          name: "当前按钮轻点 v3",
+          file: "../assets/audio/preview/sfx-button-tap-light-v3.mp3",
+          use: "开始、下一关、普通确认按钮",
+          feel: "更轻、更短，只给一点触碰反馈",
+          repeat: "适合高频重复播放",
+        },
+        {
+          group: "sfx",
+          name: "候选 A：极简 tick",
+          file: "../assets/audio/preview/sfx-button-tap-simple-v4a.mp3",
+          use: "普通按钮点击候选",
+          feel: "最简单，一粒很短的轻触声",
+          repeat: "适合高频重复播放，候选未接入",
+        },
+        {
+          group: "sfx",
+          name: "候选 B：空气 click",
+          file: "../assets/audio/preview/sfx-button-tap-air-v4b.mp3",
+          use: "普通按钮点击候选",
+          feel: "更软，像轻轻扫过按钮",
+          repeat: "适合高频重复播放，候选未接入",
+        },
+        {
+          group: "sfx",
+          name: "候选 C3：干净轻触上扬",
+          file: "../assets/audio/preview/sfx-button-tap-clean-up-v4e.mp3",
+          use: "普通按钮点击候选",
+          feel: "更简单干净，轻微上扬，不做泡泡尾音",
+          repeat: "适合高频重复播放，候选未接入",
+        },
+        {
+          group: "sfx",
+          name: "返回/关闭",
+          file: "../assets/audio/preview/sfx-button-back-soft-v1.mp3",
+          use: "返回主页、关闭弹窗、取消选择",
+          feel: "轻微下行，反馈明确但不抢",
+          repeat: "适合高频重复播放",
+        },
+        {
+          group: "sfx",
+          name: "当前小猪点选",
+          file: "../assets/audio/preview/sfx-pig-tap-snort-v1.mp3",
+          use: "点击小猪、选择目标",
+          feel: "轻鼻音感，偏可爱",
+          repeat: "适合中高频，正式音量要轻",
+        },
+        {
+          group: "sfx",
+          name: "小猪点选候选 A：软弹",
+          file: "../assets/audio/preview/sfx-pig-tap-soft-boink-v2a.mp3",
+          use: "点击小猪、选择目标候选",
+          feel: "轻轻弹一下，少一点动物叫声感",
+          repeat: "适合中高频，候选未接入",
+        },
+        {
+          group: "sfx",
+          name: "小猪点选候选 B：小哼",
+          file: "../assets/audio/preview/sfx-pig-tap-tiny-oink-v2b.mp3",
+          use: "点击小猪、选择目标候选",
+          feel: "保留一点小猪感，但比当前更短更轻",
+          repeat: "适合中频，候选未接入",
+        },
+        {
+          group: "sfx",
+          name: "小猪点选候选 C：绒感轻点",
+          file: "../assets/audio/preview/sfx-pig-tap-plush-v2c.mp3",
+          use: "点击小猪、选择目标候选",
+          feel: "更像点到软软的小猪，没有鼻音",
+          repeat: "适合中高频，候选未接入",
+        },
+        {
+          group: "sfx",
+          name: "小猪跑草地",
+          file: "../assets/audio/preview/sfx-pig-run-grass-v1.mp3",
+          use: "小猪开始跑、炮仗连跑",
+          feel: "草地小碎步，低刺激",
+          repeat: "适合高频，但需要限制同屏叠加数量",
+        },
+        {
+          group: "sfx",
+          name: "进门得分",
+          file: "../assets/audio/preview/sfx-pig-exit-gate-v1.mp3",
+          use: "小猪离开牧场、进入道路/门口",
+          feel: "轻上扬，有完成感",
+          repeat: "适合连续播放",
+        },
+        {
+          group: "sfx",
+          name: "撞击眩晕",
+          file: "../assets/audio/preview/sfx-pig-hit-dizzy-v1.mp3",
+          use: "撞到阻挡、眩晕星星出现",
+          feel: "软撞击加短铃晕感",
+          repeat: "适合中频，避免和跑动同音量叠太大",
+        },
+        {
+          group: "sfx",
+          name: "移除道具",
+          file: "../assets/audio/preview/sfx-tool-remove-pop-v1.mp3",
+          use: "移除小猪成功",
+          feel: "轻 puff，不像爆炸",
+          repeat: "低频使用，音量可略高于按钮",
+        },
+        {
+          group: "sfx",
+          name: "翻转道具",
+          file: "../assets/audio/preview/sfx-tool-flip-woosh-v1.mp3",
+          use: "小猪方向翻转",
+          feel: "短促旋转风声",
+          repeat: "适合低频道具反馈",
+        },
+        {
+          group: "sfx",
+          name: "兴奋剂",
+          file: "../assets/audio/preview/sfx-tool-stimulant-zap-v1.mp3",
+          use: "兴奋剂生效、蓄力起跑",
+          feel: "轻电感，不刺耳",
+          repeat: "低频使用，可作为道具记忆点",
+          tag: "key",
+        },
+        {
+          group: "sfx",
+          name: "炮仗",
+          file: "../assets/audio/preview/sfx-firecracker-pop-v1.mp3",
+          use: "点燃炮仗，群体逃跑前",
+          feel: "小爆点加火花，避免真鞭炮刺耳",
+          repeat: "低频重要反馈，正式音量需单独压住峰值",
+          tag: "key",
+        },
+        {
+          group: "sfx",
+          name: "连击加分",
+          file: "../assets/audio/preview/sfx-combo-pop-v1.mp3",
+          use: "连击分数跳出",
+          feel: "轻亮弹出",
+          repeat: "适合连续播放，建议高连击时做节流",
+        },
+        {
+          group: "sfx",
+          name: "通关星星",
+          file: "../assets/audio/preview/sfx-level-complete-stars-v1.mp3",
+          use: "通关结算、星级出现",
+          feel: "三段星星上扬",
+          repeat: "低频结算反馈",
+          tag: "key",
+        },
+        {
+          group: "sfx",
+          name: "收藏馆解锁",
+          file: "../assets/audio/preview/sfx-unlock-sparkle-v1.mp3",
+          use: "解锁道具/能力展示",
+          feel: "闪亮、奖励感更强",
+          repeat: "低频奖励反馈",
+          tag: "key",
+        },
+        {
+          group: "sfx",
+          name: "收藏馆选择",
+          file: "../assets/audio/preview/sfx-collection-select-soft-v1.mp3",
+          use: "收藏馆切换、选中物品",
+          feel: "柔和短提示",
+          repeat: "适合高频重复播放",
+        },
+      ];
+
+      const players = new Map();
+      const volumeControl = document.querySelector("#volumeControl");
+      const nowPlaying = document.querySelector("#nowPlaying");
+
+      function createCard(sound) {
+        const card = document.createElement("article");
+        card.className = "sound-card";
+        card.innerHTML = `
+          <div class="sound-copy">
+            <h3 class="sound-name">${sound.name}</h3>
+            <span class="sound-file">${sound.file.replace("../", "")}</span>
+            <p><strong>用途：</strong>${sound.use}</p>
+            <p><strong>听感：</strong>${sound.feel}</p>
+            <div class="tags">
+              <span class="tag ${sound.tag ?? ""}">${sound.repeat}</span>
+            </div>
+          </div>
+          <button type="button">播放</button>
+        `;
+        const button = card.querySelector("button");
+        const audio = new Audio(sound.file);
+        audio.preload = "auto";
+        audio.loop = sound.group === "bgm";
+        audio.volume = Number(volumeControl.value);
+        players.set(sound.file, { audio, card, sound });
+
+        button.addEventListener("click", () => {
+          if (!audio.paused) {
+            audio.pause();
+            audio.currentTime = 0;
+            card.classList.remove("is-playing");
+            nowPlaying.textContent = "";
+            return;
+          }
+          if (sound.group === "bgm") stopGroup("bgm");
+          audio.currentTime = 0;
+          audio.volume = Number(volumeControl.value);
+          audio.play();
+          card.classList.add("is-playing");
+          nowPlaying.textContent = `正在播放：${sound.name}`;
+        });
+
+        audio.addEventListener("ended", () => {
+          card.classList.remove("is-playing");
+          nowPlaying.textContent = "";
+        });
+
+        audio.addEventListener("pause", () => {
+          if (audio.currentTime === 0 || audio.ended) card.classList.remove("is-playing");
+        });
+
+        return card;
+      }
+
+      function stopGroup(group) {
+        players.forEach(({ audio, card, sound }) => {
+          if (group && sound.group !== group) return;
+          audio.pause();
+          audio.currentTime = 0;
+          card.classList.remove("is-playing");
+        });
+        if (!group) nowPlaying.textContent = "";
+      }
+
+      document.querySelector("#bgmGrid").append(
+        ...sounds.filter((sound) => sound.group === "bgm").map(createCard),
+      );
+      document.querySelector("#sfxGrid").append(
+        ...sounds.filter((sound) => sound.group === "sfx").map(createCard),
+      );
+
+      volumeControl.addEventListener("input", () => {
+        players.forEach(({ audio }) => {
+          audio.volume = Number(volumeControl.value);
+        });
+      });
+
+      document.querySelector("#stopAllBtn").addEventListener("click", () => stopGroup());
+    </script>
+  </body>
+</html>

@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小猪快跑二版 UI 预览</title>
+    <style>
+      :root {
+        --home-art: url("../assets/optimized/home-selected-level-flag-mobile.jpg");
+        --game-bg: url("../assets/generated/game-background-v2/full-bg-option-b.png");
+        --grass-texture: url("../assets/optimized/grass-texture-256.png");
+        --road-frame: url("../assets/optimized/soil-path-farm-gate-wide-mobile-quant.png");
+        --button-art: url("../assets/optimized/button-bg-420.png");
+        --firecracker: url("../assets/optimized/firecracker-prop-96.png");
+        --pig-right: url("../assets/optimized/pig-right-shadow-2oclock.png");
+        --pig-left: url("../assets/optimized/pig-left-shadow-2oclock.png");
+        --pig-up: url("../assets/optimized/pig-up-shadow-2oclock.png");
+        --pig-down: url("../assets/optimized/pig-down-shadow-2oclock.png");
+        --pig-black: url("../assets/optimized/pig-black-right-shadow-2oclock.png");
+        --ink: #5f3818;
+        --leaf: #5dbb46;
+        --leaf-dark: #2f8e37;
+        --cream: #fff7c8;
+        --gold: #f5bb3f;
+        --wood: #9d602b;
+        --shadow: rgba(69, 42, 18, 0.22);
+        --grid-cols: 10;
+        --grid-rows: 16;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          linear-gradient(rgba(41, 108, 48, 0.58), rgba(41, 108, 48, 0.58)),
+          var(--grass-texture),
+          linear-gradient(160deg, #72bd55, #367b3c 62%, #214d2c);
+        background-size: 100% 100%, 164px 164px, 100% 100%;
+        font-family:
+          ui-rounded, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+          system-ui, sans-serif;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .page {
+        width: min(1180px, 100%);
+        margin: 0 auto;
+        padding: 18px 14px 34px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 0 0 14px;
+      }
+
+      .title h1 {
+        margin: 0 0 4px;
+        color: #fff6cf;
+        font-size: clamp(26px, 4vw, 42px);
+        line-height: 1.05;
+        letter-spacing: 0;
+        text-shadow:
+          0 3px 0 rgba(98, 61, 24, 0.34),
+          0 10px 22px rgba(29, 62, 28, 0.34);
+      }
+
+      .title p {
+        margin: 0;
+        color: rgba(255, 248, 209, 0.88);
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.45;
+      }
+
+      .jump {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .jump a {
+        min-height: 34px;
+        padding: 8px 12px;
+        border: 1px solid rgba(255, 248, 206, 0.34);
+        border-radius: 999px;
+        color: #fff8d6;
+        background: rgba(37, 102, 44, 0.58);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        font-size: 12px;
+        font-weight: 950;
+        text-decoration: none;
+      }
+
+      .showcase {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(320px, 1fr));
+        gap: 16px;
+      }
+
+      .panel {
+        padding: 12px;
+        border: 1px solid rgba(255, 248, 206, 0.28);
+        border-radius: 8px;
+        background: rgba(255, 248, 210, 0.12);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.14),
+          0 18px 34px rgba(27, 64, 29, 0.24);
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 0 0 10px;
+      }
+
+      .panel h2 {
+        margin: 0;
+        color: #fff8d8;
+        font-size: 18px;
+        line-height: 1.15;
+        letter-spacing: 0;
+        text-shadow: 0 2px 0 rgba(82, 51, 21, 0.3);
+      }
+
+      .panel small {
+        color: rgba(255, 249, 221, 0.78);
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .phone {
+        position: relative;
+        width: min(100%, 390px);
+        aspect-ratio: 9 / 16;
+        margin: 0 auto;
+        overflow: hidden;
+        border: 1px solid rgba(34, 77, 37, 0.38);
+        border-radius: 8px;
+        background:
+          linear-gradient(rgba(75, 154, 66, 0.42), rgba(75, 154, 66, 0.42)),
+          var(--grass-texture),
+          #6fbd55;
+        background-size: 100% 100%, 150px 150px, 100% 100%;
+        box-shadow: 0 16px 28px rgba(28, 61, 28, 0.28);
+      }
+
+      .home-phone {
+        isolation: isolate;
+        background-image:
+          linear-gradient(180deg, rgba(24, 55, 22, 0.02), rgba(24, 55, 22, 0.16)),
+          var(--home-art);
+        background-size: 100% 100%, cover;
+        background-position: center;
+      }
+
+      .home-phone::after {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        top: 82px;
+        z-index: 1;
+        height: 150px;
+        border: 2px dashed rgba(255, 249, 214, 0.52);
+        border-radius: 8px;
+        content: "";
+        background: rgba(74, 42, 16, 0.08);
+        box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.01);
+        pointer-events: none;
+      }
+
+      .home-ui {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: grid;
+        grid-template-rows: auto 1fr auto auto;
+        padding: 20px 18px 30px;
+      }
+
+      .home-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .green-pill,
+      .gold-pill,
+      .round-btn {
+        border: 1px solid rgba(106, 67, 24, 0.24);
+        color: #fff9dc;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.32), transparent 52%),
+          linear-gradient(180deg, #80cf55, #45a43c);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.42),
+          0 5px 0 rgba(72, 110, 34, 0.22),
+          0 10px 18px rgba(70, 45, 18, 0.16);
+        font-weight: 950;
+        text-shadow: 0 2px 0 rgba(43, 86, 32, 0.28);
+      }
+
+      .green-pill {
+        min-width: 76px;
+        height: 34px;
+        border-radius: 999px;
+        font-size: 13px;
+      }
+
+      .round-btn {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 38px;
+        border-radius: 999px;
+        color: #7c4f1f;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.58), transparent 44%),
+          linear-gradient(180deg, #fff7b5, #f2b94c);
+        text-shadow: none;
+      }
+
+      .home-brand-slot {
+        align-self: end;
+        justify-self: center;
+        margin-bottom: 16px;
+        padding: 7px 16px;
+        border: 1px solid rgba(255, 248, 216, 0.38);
+        border-radius: 8px;
+        color: rgba(255, 250, 226, 0.96);
+        background: rgba(89, 53, 21, 0.3);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.14),
+          0 7px 16px rgba(70, 43, 18, 0.18);
+        font-size: 13px;
+        font-weight: 950;
+        text-shadow: 0 2px 0 rgba(74, 43, 17, 0.32);
+      }
+
+      .home-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin: 0 10px 12px;
+      }
+
+      .stat-plaque {
+        min-height: 62px;
+        padding: 9px 10px;
+        border: 2px solid rgba(130, 83, 34, 0.2);
+        border-radius: 8px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.12)),
+          rgba(255, 245, 196, 0.84);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.6),
+          0 6px 0 rgba(114, 78, 34, 0.18);
+        text-align: center;
+        font-weight: 950;
+      }
+
+      .stat-plaque span {
+        display: block;
+        color: #855520;
+        font-size: 13px;
+      }
+
+      .stat-plaque strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 20px;
+      }
+
+      .image-button {
+        position: relative;
+        justify-self: center;
+        display: grid;
+        place-items: center;
+        width: 240px;
+        height: 72px;
+        border: 2px solid rgba(132, 82, 31, 0.36);
+        border-radius: 20px;
+        color: #723f14;
+        background:
+          radial-gradient(ellipse at 50% 18%, rgba(255, 255, 255, 0.75), transparent 44%),
+          linear-gradient(180deg, #fff8b8, #ffd65e 64%, #d98a28);
+        box-shadow:
+          inset 0 0 0 5px rgba(255, 255, 255, 0.2),
+          inset 0 -8px 0 rgba(143, 78, 24, 0.14),
+          0 7px 0 rgba(138, 83, 27, 0.24),
+          0 14px 18px rgba(75, 45, 17, 0.18);
+        font-size: 25px;
+        font-weight: 1000;
+        letter-spacing: 0;
+        text-shadow:
+          0 1px 0 #fff7c8,
+          0 2px 0 rgba(133, 74, 21, 0.18);
+      }
+
+      .game-phone {
+        display: block;
+        padding: 12px 14px 14px;
+        background-image:
+          linear-gradient(180deg, rgba(30, 92, 35, 0.1), rgba(30, 92, 35, 0.16)),
+          var(--game-bg);
+        background-size: 100% 100%, cover;
+        background-position: center;
+      }
+
+      .game-hud {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        top: 13px;
+        z-index: 6;
+        display: grid;
+        grid-template-columns: 46px 1fr 96px;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .wood-tab {
+        display: grid;
+        place-items: center;
+        min-height: 38px;
+        border: 1px solid rgba(82, 51, 20, 0.22);
+        border-radius: 999px;
+        color: #fff7c9;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 48%),
+          linear-gradient(180deg, #76c650, #3b9b39);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.42),
+          0 5px 0 rgba(69, 102, 34, 0.22);
+        font-weight: 950;
+        text-shadow: 0 2px 0 rgba(34, 89, 31, 0.26);
+      }
+
+      .gold-pill {
+        display: grid;
+        place-items: center;
+        min-height: 36px;
+        border-radius: 999px;
+        color: #fff8d8;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.32), transparent 48%),
+          linear-gradient(180deg, #ffd765, #da8a2b);
+      }
+
+      .board-stage {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      .road-frame {
+        display: none;
+      }
+
+      .mini-board {
+        position: absolute;
+        left: 13.8%;
+        right: 13.8%;
+        top: 20.2%;
+        bottom: 16.4%;
+        overflow: hidden;
+        border-radius: 9%;
+        background: transparent;
+      }
+
+      .mini-board::after {
+        position: absolute;
+        inset: 1px;
+        border: 1px solid rgba(236, 255, 217, 0.34);
+        content: "";
+        background:
+          repeating-linear-gradient(90deg, rgba(236, 255, 217, 0.22) 0 1px, transparent 1px calc((100% - 2px) / var(--grid-cols))),
+          repeating-linear-gradient(0deg, rgba(236, 255, 217, 0.22) 0 1px, transparent 1px calc((100% - 2px) / var(--grid-rows)));
+        opacity: 0.72;
+      }
+
+      .pig {
+        position: absolute;
+        z-index: 2;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        filter: drop-shadow(0 5px 4px rgba(80, 47, 20, 0.16));
+      }
+
+      .pig.r,
+      .pig.l,
+      .pig.b {
+        width: 72px;
+        height: 40px;
+      }
+
+      .pig.u,
+      .pig.d {
+        width: 42px;
+        height: 78px;
+      }
+
+      .pig.r { left: 26%; top: 23%; background-image: var(--pig-right); }
+      .pig.l { left: 54%; top: 39%; background-image: var(--pig-left); }
+      .pig.u { left: 32%; top: 58%; background-image: var(--pig-up); }
+      .pig.d { left: 62%; top: 61%; background-image: var(--pig-down); }
+      .pig.b { left: 56%; top: 23%; background-image: var(--pig-black); }
+
+      .tool-tray {
+        position: absolute;
+        left: 18px;
+        right: 18px;
+        bottom: 13px;
+        z-index: 6;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        align-items: end;
+      }
+
+      .tool {
+        position: relative;
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        min-height: 62px;
+        border: 2px solid rgba(132, 82, 31, 0.3);
+        border-radius: 15px;
+        color: #754317;
+        background:
+          radial-gradient(ellipse at 50% 16%, rgba(255, 255, 255, 0.7), transparent 42%),
+          linear-gradient(180deg, #fff5ad, #f7c24a 68%, #d98d2a);
+        box-shadow:
+          inset 0 0 0 4px rgba(255, 255, 255, 0.18),
+          inset 0 -7px 0 rgba(143, 78, 24, 0.12),
+          0 5px 0 rgba(138, 83, 27, 0.22);
+        font-size: 13px;
+        font-weight: 950;
+      }
+
+      .tool span {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        margin-bottom: 2px;
+        border-radius: 8px;
+        color: #fff9d4;
+        background: linear-gradient(180deg, #77d4ff, #4489de);
+        box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.38);
+      }
+
+      .tool .fire {
+        background: transparent var(--firecracker) center / contain no-repeat;
+        box-shadow: none;
+      }
+
+      .tool small {
+        position: absolute;
+        right: 9px;
+        bottom: 9px;
+        color: #9a6124;
+        font-size: 10px;
+      }
+
+      .collection-phone {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 18px 16px;
+        background:
+          linear-gradient(rgba(28, 83, 32, 0.12), rgba(28, 83, 32, 0.3)),
+          var(--home-art);
+        background-size: 100% 100%, cover;
+        background-position: center;
+      }
+
+      .collection-phone::before {
+        position: absolute;
+        inset: 0;
+        content: "";
+        background:
+          radial-gradient(ellipse at 50% 0, rgba(255, 238, 157, 0.24), transparent 35%),
+          rgba(35, 93, 37, 0.55);
+        pointer-events: none;
+      }
+
+      .album {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        gap: 10px;
+        min-height: 100%;
+        padding: 18px 16px 16px;
+        border: 2px solid rgba(127, 83, 37, 0.26);
+        border-radius: 8px;
+        background:
+          linear-gradient(90deg, rgba(142, 86, 35, 0.16) 0 11px, transparent 12px),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.14)),
+          linear-gradient(180deg, #fff8d5, #f3cc6d);
+        box-shadow:
+          inset 0 0 0 5px rgba(255, 255, 255, 0.22),
+          0 16px 30px rgba(68, 43, 18, 0.24);
+      }
+
+      .album-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .album-title strong {
+        font-size: 26px;
+        font-weight: 1000;
+      }
+
+      .close {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(116, 78, 34, 0.22);
+        border-radius: 999px;
+        color: #7b4a1d;
+        background: #fff8cf;
+        font-size: 22px;
+        font-weight: 950;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+
+      .tab {
+        display: grid;
+        place-items: center;
+        min-height: 32px;
+        border-radius: 999px;
+        background: rgba(255, 249, 219, 0.76);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+        font-size: 12px;
+        font-weight: 950;
+      }
+
+      .tab.active {
+        color: #fff8d8;
+        background: linear-gradient(180deg, #77c950, #3d9d39);
+        text-shadow: 0 2px 0 rgba(35, 88, 31, 0.26);
+      }
+
+      .collection-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        align-content: start;
+      }
+
+      .collection-card {
+        position: relative;
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        min-height: 96px;
+        padding: 8px 5px;
+        border: 1px solid rgba(112, 73, 30, 0.18);
+        border-radius: 8px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.62), transparent 45%),
+          linear-gradient(180deg, #fff0a1, #f4b945);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.46),
+          0 5px 0 rgba(139, 84, 28, 0.18);
+        font-weight: 950;
+        text-align: center;
+      }
+
+      .collection-card.locked {
+        color: #fff4c7;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 48%),
+          linear-gradient(180deg, #5d5b51, #282822);
+      }
+
+      .collection-icon {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        margin-bottom: 5px;
+        border-radius: 8px;
+        color: #fff9d7;
+        background: linear-gradient(180deg, #ff96bf, #e45d8b);
+        box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.36);
+        font-size: 24px;
+      }
+
+      .collection-icon.fire {
+        background: transparent var(--firecracker) center / contain no-repeat;
+        box-shadow: none;
+      }
+
+      .collection-card small {
+        font-size: 11px;
+      }
+
+      .guide {
+        min-height: 104px;
+        padding: 12px;
+        border: 1px solid rgba(118, 78, 34, 0.18);
+        border-radius: 8px;
+        background: rgba(255, 249, 212, 0.76);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
+      }
+
+      .guide strong {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 18px;
+      }
+
+      .guide p {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.45;
+      }
+
+      .complete-phone {
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background-image:
+          linear-gradient(rgba(42, 93, 38, 0.22), rgba(42, 93, 38, 0.36)),
+          var(--game-bg);
+        background-size: 100% 100%, cover;
+        background-position: center;
+      }
+
+      .complete-board {
+        position: relative;
+        width: min(318px, 94%);
+        padding: 22px 18px 18px;
+        border: 2px solid rgba(123, 78, 31, 0.25);
+        border-radius: 8px;
+        text-align: center;
+        background:
+          radial-gradient(ellipse at 50% 18%, rgba(255, 255, 255, 0.82), transparent 28%),
+          linear-gradient(180deg, #fff9cc, #f4c95f);
+        box-shadow:
+          inset 0 0 0 5px rgba(255, 255, 255, 0.24),
+          0 18px 38px rgba(72, 48, 24, 0.28);
+      }
+
+      .complete-board h3 {
+        margin: 0 0 8px;
+        font-size: 34px;
+        line-height: 1.1;
+      }
+
+      .stars {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin: 12px 0 8px;
+        color: #f6b62c;
+        font-size: 42px;
+        line-height: 1;
+        -webkit-text-stroke: 1px rgba(137, 75, 20, 0.42);
+        text-shadow: 0 5px 8px rgba(143, 77, 18, 0.22);
+      }
+
+      .score {
+        margin-bottom: 14px;
+        font-size: 17px;
+        font-weight: 950;
+      }
+
+      .unlock-strip {
+        display: grid;
+        place-items: center;
+        min-height: 44px;
+        margin-bottom: 12px;
+        border-radius: 8px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 50%),
+          linear-gradient(180deg, #fff0a6, #ffbd40);
+        box-shadow: 0 5px 0 rgba(134, 82, 27, 0.15);
+        font-size: 15px;
+        font-weight: 950;
+      }
+
+      .complete-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 9px;
+      }
+
+      .small-image-button {
+        display: grid;
+        place-items: center;
+        min-height: 52px;
+        border: 2px solid rgba(132, 82, 31, 0.3);
+        border-radius: 15px;
+        color: #723f14;
+        background:
+          radial-gradient(ellipse at 50% 16%, rgba(255, 255, 255, 0.72), transparent 42%),
+          linear-gradient(180deg, #fff6b4, #f8c74d 68%, #d98a28);
+        box-shadow:
+          inset 0 0 0 4px rgba(255, 255, 255, 0.18),
+          0 5px 0 rgba(138, 83, 27, 0.22);
+        font-weight: 950;
+      }
+
+      .asset-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+
+      .asset-chip {
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        min-height: 86px;
+        padding: 8px;
+        border-radius: 8px;
+        background: rgba(255, 248, 210, 0.74);
+        box-shadow: 0 5px 0 rgba(68, 43, 20, 0.1);
+        font-size: 12px;
+        font-weight: 950;
+        text-align: center;
+      }
+
+      .asset-chip.needs-redo {
+        outline: 2px solid rgba(232, 82, 38, 0.52);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 226, 188, 0.76)),
+          rgba(255, 210, 156, 0.8);
+      }
+
+      .asset-thumb {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 5px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+      }
+
+      .asset-thumb.pig { background-image: var(--pig-right); }
+      .asset-thumb.road { background-image: var(--road-frame); }
+      .asset-thumb.btn { background-image: var(--button-art); }
+      .asset-thumb.fire { background-image: var(--firecracker); }
+
+      @media (max-width: 820px) {
+        .topbar {
+          display: grid;
+        }
+
+        .jump {
+          justify-content: flex-start;
+        }
+
+        .showcase {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .page {
+          padding: 12px 8px 28px;
+        }
+
+        .panel {
+          padding: 9px;
+        }
+
+        .asset-row {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar">
+        <div class="title">
+          <h1>二版 UI 方向预览</h1>
+          <p>静态预览，不改正式游戏。二版优先按 10×16 核心棋盘看观感，文字和状态由代码叠加。</p>
+        </div>
+        <nav class="jump" aria-label="预览区域">
+          <a href="#home">首页</a>
+          <a href="#game">游戏页</a>
+          <a href="#collection">收藏馆</a>
+          <a href="#complete">结算</a>
+        </nav>
+      </header>
+
+      <section class="showcase">
+        <article class="panel" id="home">
+          <div class="panel-head">
+            <h2>首页</h2>
+            <small>主视觉 + 动态叠加</small>
+          </div>
+          <div class="phone home-phone">
+            <div class="home-ui">
+              <div class="home-top">
+                <button class="green-pill" type="button">收藏馆</button>
+                <button class="round-btn" type="button" aria-label="音效">♪</button>
+              </div>
+              <div></div>
+              <div class="home-brand-slot">小猪快跑</div>
+              <div>
+                <div class="home-stats">
+                  <div class="stat-plaque">
+                    <span>总星数</span>
+                    <strong>12星</strong>
+                  </div>
+                  <div class="stat-plaque">
+                    <span>已通关</span>
+                    <strong>4关</strong>
+                  </div>
+                </div>
+                <button class="image-button" type="button">开始游戏</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel" id="game">
+          <div class="panel-head">
+            <h2>游戏页</h2>
+            <small>10×16 棋盘 + HUD 托盘</small>
+          </div>
+          <div class="phone game-phone">
+            <div class="game-hud">
+              <button class="round-btn" type="button" aria-label="重玩">↻</button>
+              <div class="wood-tab">第 6 关</div>
+              <div class="gold-pill">得分 850</div>
+            </div>
+            <div class="board-stage">
+              <div class="road-frame" aria-hidden="true"></div>
+              <div class="mini-board">
+                <span class="pig r" aria-hidden="true"></span>
+                <span class="pig b" aria-hidden="true"></span>
+                <span class="pig l" aria-hidden="true"></span>
+                <span class="pig u" aria-hidden="true"></span>
+                <span class="pig d" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="tool-tray">
+              <button class="tool" type="button"><span>●</span>移除<small>1次</small></button>
+              <button class="tool" type="button"><span class="fire"></span>炮仗<small>1次</small></button>
+              <button class="tool" type="button"><span>↺</span>翻转<small>1次</small></button>
+              <button class="tool" type="button"><span>⚡</span>兴奋剂<small>1次</small></button>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel" id="collection">
+          <div class="panel-head">
+            <h2>收藏馆</h2>
+            <small>相册底板 + 卡片系统</small>
+          </div>
+          <div class="phone collection-phone">
+            <div class="album">
+              <div class="album-title">
+                <strong>收藏馆</strong>
+                <button class="close" type="button" aria-label="关闭">×</button>
+              </div>
+              <div class="tabs">
+                <div class="tab active">全部</div>
+                <div class="tab">道具</div>
+                <div class="tab">能力</div>
+                <div class="tab">皮肤</div>
+              </div>
+              <div class="collection-grid">
+                <div class="collection-card">
+                  <span class="collection-icon">●</span>
+                  移除
+                  <small>已携带</small>
+                </div>
+                <div class="collection-card">
+                  <span class="collection-icon fire"></span>
+                  炮仗
+                  <small>可携带</small>
+                </div>
+                <div class="collection-card locked">
+                  <span class="collection-icon">?</span>
+                  待解锁
+                  <small>10星</small>
+                </div>
+                <div class="collection-card locked">
+                  <span class="collection-icon">?</span>
+                  待解锁
+                  <small>15星</small>
+                </div>
+                <div class="collection-card locked">
+                  <span class="collection-icon">?</span>
+                  待解锁
+                  <small>20星</small>
+                </div>
+                <div class="collection-card locked">
+                  <span class="collection-icon">?</span>
+                  待解锁
+                  <small>25星</small>
+                </div>
+              </div>
+              <div class="guide">
+                <strong>炮仗</strong>
+                <p>点击后拖到路边，附近的小猪会被吓跑。状态文字由代码叠加，不画进图里。</p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel" id="complete">
+          <div class="panel-head">
+            <h2>通关弹窗</h2>
+            <small>底板资产 + 状态叠加</small>
+          </div>
+          <div class="phone complete-phone">
+            <div class="complete-board">
+              <h3>通关</h3>
+              <div class="stars" aria-label="二星">★ ★ ☆</div>
+              <div class="score">本局得分 1380</div>
+              <div class="unlock-strip">有新内容可领取</div>
+              <div class="complete-actions">
+                <button class="small-image-button" type="button">重玩</button>
+                <button class="small-image-button" type="button">下一关</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <h2>已可复用资产</h2>
+            <small>来自 assets/optimized</small>
+          </div>
+          <div class="asset-row">
+            <div class="asset-chip"><span class="asset-thumb pig"></span>小猪方向图</div>
+            <div class="asset-chip"><span class="asset-thumb road"></span>棋盘外框</div>
+            <div class="asset-chip needs-redo"><span class="asset-thumb btn"></span>按钮底图需重做</div>
+            <div class="asset-chip"><span class="asset-thumb fire"></span>炮仗图标</div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

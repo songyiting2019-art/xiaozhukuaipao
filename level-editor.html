@@ -3,45 +3,77 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>小猪出栏 - 关卡后台编辑器</title>
-    <link rel="stylesheet" href="./styles.css?v=game-clean-1" />
-    <link rel="stylesheet" href="./level-editor.css?v=4" />
+    <title>小猪快跑 - 关卡编辑器</title>
+    <link rel="stylesheet" href="./styles.css?v=score-pop-1" />
+    <link rel="stylesheet" href="./level-editor.css?v=board-10x16-1" />
   </head>
   <body class="level-editor-page">
-    <main class="level-editor-shell">
-      <header class="level-editor-header">
-        <div>
-          <p class="level-editor-kicker">后台工具</p>
-          <h1>关卡编辑器</h1>
+    <main class="editor-shell">
+      <header class="editor-topbar" aria-label="关卡编辑器工具栏">
+        <div class="editor-brand">
+          <span>后台工具</span>
+          <strong>关卡编辑器</strong>
         </div>
-        <a class="level-editor-link" href="./index.html">打开玩家页</a>
-      </header>
 
-      <section class="level-editor-topbar" aria-label="编辑器工具栏">
-        <label class="editor-field">
+        <label class="editor-field editor-level-field">
           <span>关卡</span>
           <select id="editorLevelSelect" aria-label="选择关卡"></select>
         </label>
-        <label class="editor-count-field">
-          <span id="editorPigCount">0</span>
-          <input id="editorGenerateCount" type="number" min="1" max="90" step="1" value="30" inputmode="numeric" aria-label="生成小猪数量" />
-        </label>
-        <div class="editor-actions" aria-label="编辑操作">
-          <button class="editor-chip" id="editorGenerate" type="button">生成</button>
-          <button class="editor-chip" id="editorAddLevel" type="button">新增关卡</button>
-          <button class="editor-chip editor-chip-primary" id="editorDeploy" type="button">部署</button>
-          <button class="editor-chip" id="editorErase" type="button">删除</button>
-          <button class="editor-chip" id="editorRotate" type="button">旋转</button>
-        </div>
-      </section>
 
-      <section class="level-editor-main">
-        <div class="editor-board-wrap">
-          <div class="pasture editor-board" id="editorBoard" aria-label="关卡棋盘"></div>
+        <label class="editor-field editor-count-field">
+          <span>数量</span>
+          <input id="editorGenerateCount" type="number" min="1" max="78" step="1" value="30" inputmode="numeric" aria-label="生成小猪数量" />
+        </label>
+
+        <div class="editor-status" id="editorLevelStatus">未保存</div>
+        <div class="editor-source" id="editorSourceStatus">来源：正式关卡</div>
+
+        <div class="editor-top-actions">
+          <button class="editor-button" id="editorGenerateCurrent" type="button">生成本关</button>
+          <button class="editor-button" id="editorNewLevel" type="button">新增关卡</button>
+          <button class="editor-button" id="editorSaveDraft" type="button">保存草稿</button>
+          <button class="editor-button" id="editorReloadOfficial" type="button">重置空白</button>
+          <button class="editor-button" id="editorPlaytest" type="button">试玩</button>
+          <button class="editor-button" id="editorDeployOfficial" type="button">部署正式</button>
+          <button class="editor-button" id="editorClearLevel" type="button">清空</button>
+          <button class="editor-button editor-button-primary" id="editorExport" type="button">导出给总控</button>
         </div>
+      </header>
+
+      <section class="editor-main">
+        <section class="editor-board-panel" aria-label="棋盘编辑区">
+          <div class="editor-board-frame">
+            <div class="pasture editor-board" id="editorBoard" aria-label="关卡棋盘"></div>
+          </div>
+        </section>
+
+        <aside class="editor-side-panel" aria-label="关卡信息">
+          <section class="editor-card">
+            <div class="editor-card-head">
+              <h2>统计</h2>
+              <span id="editorPigCount">小猪 0</span>
+            </div>
+            <div class="editor-status-line">
+              <strong id="editorValidationState">待检查</strong>
+              <span id="editorSelectedInfo">未选中小猪</span>
+            </div>
+            <div class="editor-metrics" id="editorMetrics"></div>
+            <div class="editor-issues" id="editorIssues" aria-live="polite"></div>
+          </section>
+
+          <section class="editor-card editor-export-card">
+            <div class="editor-card-head">
+              <h2>导出</h2>
+              <button class="editor-button editor-button-small" id="editorCopyExport" type="button">复制</button>
+            </div>
+            <textarea id="editorExportText" readonly placeholder="远程无法本机部署时，点击“导出给总控”生成当前关卡数据"></textarea>
+          </section>
+        </aside>
       </section>
     </main>
 
-    <script src="./level-editor.js?v=12"></script>
+    <script src="./board-core.js?v=board-core-2"></script>
+    <script src="./levels.js?v=levels-split-2"></script>
+    <script src="./level-editor.js?v=board-10x16-1"></script>
   </body>
 </html>

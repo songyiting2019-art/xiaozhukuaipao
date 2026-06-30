@@ -1,84 +1,89 @@
+const {
+  DIRS,
+  DIRECTIONS,
+  CORNER_CUTOUT,
+  getFootprint,
+  getAnimalCenter,
+  isCellInsideArea,
+  isPlayableCell,
+  isAnimalOnValidCells,
+  getPlayableCellCount,
+  getCellKey,
+  validateLevelAnimals: validateBoardLevelAnimals,
+} = window.PigEscapeBoardCore;
+
+const EDITOR_BOARD = {
+  cols: 10,
+  rows: 16,
+};
+
 const editorState = {
-  dirs: null,
-  board: null,
-  cornerCutout: null,
-  flowRules: null,
+  dirs: DIRS,
+  board: EDITOR_BOARD,
+  cornerCutout: CORNER_CUTOUT,
+  officialLevels: [],
   levels: [],
   levelIndex: 0,
   animals: [],
-  dir: "up",
   selectedAnimalId: null,
-  lastAdjustedAnimalId: null,
-  activeInspection: null,
+  dir: "up",
+  validation: null,
+  dirty: false,
   drag: null,
-  suppressClick: false,
+  source: "official",
 };
 
-const DEFAULT_FLOW_RULES = {
-  maxInitialOpen: 6,
-  maxInitialOpenRatio: 0.16,
-  maxOpenPerDirection: 3,
-  maxExitChain: 2,
-  maxOpenAfterRemoval: 7,
-  maxNewOpenAfterRemoval: 3,
-  maxExitChainAfterRemoval: 3,
-};
-
-const DEPLOYED_LEVELS_STORAGE_KEY = "pigEscapeEditorDeployedLevelsV1";
+const DRAFT_STORAGE_KEY = "pigEscapeLevelEditorDraftsV3Board10x16";
+const DEPLOYED_LEVELS_STORAGE_KEY = "pigEscapeEditorDeployedLevelsV2Board10x16";
+const GENERATOR_ATTEMPTS = 360;
+const GENERATOR_REPAIR_PASSES = 90;
 
 const boardEl = document.querySelector("#editorBoard");
 const levelSelect = document.querySelector("#editorLevelSelect");
-const rotateBtn = document.querySelector("#editorRotate");
-const eraseBtn = document.querySelector("#editorErase");
-const generateBtn = document.querySelector("#editorGenerate");
-const addLevelBtn = document.querySelector("#editorAddLevel");
-const deployBtn = document.querySelector("#editorDeploy");
-const statusEl = document.querySelector("#editorStatus");
-const pigCountEl = document.querySelector("#editorPigCount");
 const generateCountInput = document.querySelector("#editorGenerateCount");
-const outputEl = document.querySelector("#editorOutput");
+const statusEl = document.querySelector("#editorLevelStatus");
+const sourceStatusEl = document.querySelector("#editorSourceStatus");
+const generateCurrentBtn = document.querySelector("#editorGenerateCurrent");
+const newLevelBtn = document.querySelector("#editorNewLevel");
+const saveDraftBtn = document.querySelector("#editorSaveDraft");
+const reloadOfficialBtn = document.querySelector("#editorReloadOfficial");
+const playtestBtn = document.querySelector("#editorPlaytest");
+const deployOfficialBtn = document.querySelector("#editorDeployOfficial");
+const clearLevelBtn = document.querySelector("#editorClearLevel");
+const exportBtn = document.querySelector("#editorExport");
+const copyExportBtn = document.querySelector("#editorCopyExport");
+const pigCountEl = document.querySelector("#editorPigCount");
+const selectedInfoEl = document.querySelector("#editorSelectedInfo");
+const validationStateEl = document.querySelector("#editorValidationState");
+const metricsEl = document.querySelector("#editorMetrics");
+const issuesEl = document.querySelector("#editorIssues");
+const exportTextEl = document.querySelector("#editorExportText");
 
 bootEditor();
 
 async function bootEditor() {
   try {
     const data = await loadGameData();
-    data.levels = readDeployedLevels(data.levels);
     Object.assign(editorState, data);
+    editorState.officialLevels = data.levels.map(normalizeLevel);
+    editorState.levels = loadInitialLevels(editorState.officialLevels);
     boardEl.style.setProperty("--board-cols", editorState.board.cols);
     boardEl.style.setProperty("--board-rows", editorState.board.rows);
     renderLevelOptions();
     loadLevel(0);
     bindEditorEvents();
   } catch (error) {
-    if (pigCountEl) pigCountEl.textContent = "加载失败";
-    if (statusEl) statusEl.textContent = `加载失败：${error.message}`;
+    statusEl.textContent = `加载失败：${error.message}`;
   }
 }
 
 async function loadGameData() {
-  const source = await readTextFile("./game.js");
-  const constantsSource = source.slice(0, source.indexOf("const state ="));
-  return Function(
-    `${constantsSource}\nreturn { dirs: DIRS, board: BOARD, cornerCutout: typeof CORNER_CUTOUT === "undefined" ? null : CORNER_CUTOUT, flowRules: typeof FLOW_RULES === "undefined" ? null : FLOW_RULES, levels: LEVELS };`,
-  )();
-}
-
-async function readTextFile(path) {
-  try {
-    const response = await fetch(path);
-    if (response.ok) return response.text();
-  } catch (error) {
-    // File URLs can reject fetch; XMLHttpRequest still works in some local setups.
-  }
-
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open("GET", path, true);
-    request.onload = () => resolve(request.responseText);
-    request.onerror = () => reject(new Error("无法读取 game.js"));
-    request.send();
-  });
+  return {
+    dirs: DIRS,
+    board: EDITOR_BOARD,
+    cornerCutout: CORNER_CUTOUT,
+    levels: window.PIG_ESCAPE_LEVELS ?? [],
+  };
 }
 
 function bindEditorEvents() {
@@ -86,22 +91,22 @@ function bindEditorEvents() {
     saveCurrentLevelDraft();
     loadLevel(Number(levelSelect.value));
   });
-
-  eraseBtn.addEventListener("click", deleteSelectedAnimal);
-  rotateBtn.addEventListener("click", () => rotateSelectedAnimal(1));
-  generateBtn.addEventListener("click", () => runGenerateTask(generateCurrentLevel, generateBtn));
-  addLevelBtn.addEventListener("click", () => runGenerateTask(addGeneratedLevel, addLevelBtn));
-  deployBtn.addEventListener("click", deployLevelsToGame);
-
-  boardEl.addEventListener("pointerdown", handleBoardPointerDown);
-  boardEl.addEventListener("pointermove", handleBoardPointerMove);
-  boardEl.addEventListener("pointerup", handleBoardPointerUp);
-  boardEl.addEventListener("pointercancel", cancelBoardDrag);
+  generateCurrentBtn.addEventListener("click", generateCurrentLevel);
+  newLevelBtn.addEventListener("click", createNewLevel);
+  saveDraftBtn.addEventListener("click", saveAllDrafts);
+  reloadOfficialBtn.addEventListener("click", reloadOfficialLevels);
+  playtestBtn.addEventListener("click", playtestCurrentLevels);
+  deployOfficialBtn.addEventListener("click", deployOfficialLevels);
+  clearLevelBtn.addEventListener("click", clearCurrentLevel);
+  exportBtn.addEventListener("click", exportForController);
+  copyExportBtn.addEventListener("click", copyExportText);
+  window.addEventListener("pointermove", handleDragMove);
+  window.addEventListener("pointerup", finishDrag);
 }
 
 function renderLevelOptions() {
   levelSelect.innerHTML = editorState.levels
-    .map((level, index) => `<option value="${index}">${level.name}</option>`)
+    .map((level, index) => `<option value="${index}">${level.name ?? `第${index + 1}关`}</option>`)
     .join("");
 }
 
@@ -114,26 +119,27 @@ function loadLevel(index) {
     id: `edit-${animalIndex}`,
     active: true,
   }));
+  generateCountInput.value = String(editorState.animals.length || Number(generateCountInput.value) || 30);
   editorState.selectedAnimalId = editorState.animals[0]?.id ?? null;
-  editorState.lastAdjustedAnimalId = editorState.selectedAnimalId;
   if (editorState.selectedAnimalId) {
     editorState.dir = findAnimalById(editorState.selectedAnimalId).dir;
   }
-  syncGenerateCount(getGenerateTargetCount());
-  editorState.drag = null;
-  clearActiveInspection();
+  setDirty(false);
   renderEditor();
 }
 
 function renderEditor() {
+  editorState.validation = validateEditorLevelAnimals(editorState.animals, getCurrentPlayArea());
   boardEl.innerHTML = "";
-  renderEditorPlayArea();
-  renderEditorCells();
-  renderEditorAnimals();
-  updateStatus();
+  renderPlayArea();
+  renderCells();
+  renderAnimals();
+  renderRotateHandle();
+  renderControls();
+  renderStats();
 }
 
-function renderEditorPlayArea() {
+function renderPlayArea() {
   const area = getCurrentPlayArea();
   const playArea = document.createElement("span");
   playArea.className = "play-area";
@@ -144,30 +150,34 @@ function renderEditorPlayArea() {
   boardEl.appendChild(playArea);
 }
 
-function renderEditorCells() {
+function renderCells() {
   const area = getCurrentPlayArea();
   for (let y = 0; y < editorState.board.rows; y += 1) {
     for (let x = 0; x < editorState.board.cols; x += 1) {
       const cell = document.createElement("button");
       cell.className = "editor-grid-cell";
-      if (!isCellInsideArea(x, y, area) || !isPlayableCell(x, y)) {
+      if (!isCellInsideArea(x, y, area) || !isPlayableCell(x, y, editorState.board, editorState.cornerCutout)) {
         cell.classList.add("is-outside");
-        cell.tabIndex = -1;
       }
       cell.type = "button";
+      cell.dataset.x = String(x);
+      cell.dataset.y = String(y);
       cell.style.setProperty("--x", x);
       cell.style.setProperty("--y", y);
-      cell.addEventListener("click", () => handleCellClick(x, y));
+      cell.setAttribute("aria-label", `格子 ${x},${y}`);
+      cell.addEventListener("click", () => handleBoardCell(x, y));
+      cell.addEventListener("dblclick", () => handleBoardDoubleClick(x, y));
+      cell.addEventListener("pointerdown", (event) => startDrag(event, x, y));
       boardEl.appendChild(cell);
     }
   }
 }
 
-function renderEditorAnimals() {
+function renderAnimals() {
   editorState.animals.forEach((animal) => {
     const pig = document.createElement("button");
     const center = getAnimalCenter(animal);
-    pig.className = `pig animal-pig${getPigInspectionClass(animal)}${animal.id === editorState.selectedAnimalId ? " is-selected" : ""}`;
+    pig.className = `pig animal-pig${getPigRiskClass(animal)}${animal.id === editorState.selectedAnimalId ? " is-selected" : ""}`;
     pig.type = "button";
     pig.dataset.id = animal.id;
     pig.style.setProperty("--x", center.x);
@@ -175,863 +185,863 @@ function renderEditorAnimals() {
     pig.style.setProperty("--z", Math.round(center.y * 2 + 10));
     pig.style.setProperty("--rot", editorState.dirs[animal.dir].rot);
     pig.setAttribute("aria-label", `小猪朝${editorState.dirs[animal.dir].label}`);
-    pig.innerHTML = `
-      <span class="pig-shape">
-        <span class="pig-body"></span>
-        <span class="pig-head"></span>
-        <span class="pig-ear left"></span>
-        <span class="pig-ear right"></span>
-        <span class="pig-eye left"></span>
-        <span class="pig-eye right"></span>
-        <span class="pig-snout"></span>
-        <span class="pig-leg front-left"></span>
-        <span class="pig-leg front-right"></span>
-        <span class="pig-leg back-left"></span>
-        <span class="pig-leg back-right"></span>
-        <span class="pig-tail"></span>
-      </span>
-    `;
+    pig.title = `小猪 ${animal.x},${animal.y} 朝${editorState.dirs[animal.dir].label}`;
+    pig.innerHTML = `<span class="pig-shape" aria-hidden="true"></span>`;
     boardEl.appendChild(pig);
   });
 }
 
-function handleCellClick(x, y) {
-  if (editorState.suppressClick) {
-    editorState.suppressClick = false;
-    return;
-  }
+function renderRotateHandle() {
+  const selected = findAnimalById(editorState.selectedAnimalId);
+  if (!selected) return;
+  const center = getAnimalCenter(selected);
+  const rotateButton = document.createElement("button");
+  rotateButton.className = "editor-floating-rotate";
+  rotateButton.type = "button";
+  rotateButton.style.setProperty("--x", center.x);
+  rotateButton.style.setProperty("--y", center.y);
+  rotateButton.setAttribute("aria-label", "旋转小猪");
+  rotateButton.title = "旋转";
+  rotateButton.textContent = "↻";
+  rotateButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    rotateSelectedDirection();
+  });
+  boardEl.appendChild(rotateButton);
+}
 
+function handleBoardCell(x, y) {
   const hit = findAnimalAtCell(x, y);
   if (hit) {
     selectAnimal(hit.id);
-    renderEditor();
     return;
   }
+}
 
+function handleBoardDoubleClick(x, y) {
+  if (findAnimalAtCell(x, y)) return;
   createAnimalAt(x, y);
 }
 
-function createAnimalAt(x, y, dir = editorState.dir) {
+function startDrag(event, x, y) {
+  const hit = findAnimalAtCell(x, y);
+  if (!hit) return;
+  event.preventDefault();
+  editorState.selectedAnimalId = hit.id;
+  editorState.dir = hit.dir;
+  editorState.drag = {
+    id: hit.id,
+    startX: event.clientX,
+    startY: event.clientY,
+    moved: false,
+  };
+  boardEl.setPointerCapture?.(event.pointerId);
+  renderEditor();
+  updateDragPreview(event);
+}
+
+function handleDragMove(event) {
+  if (!editorState.drag) return;
+  const dx = event.clientX - editorState.drag.startX;
+  const dy = event.clientY - editorState.drag.startY;
+  if (Math.hypot(dx, dy) > 4) editorState.drag.moved = true;
+  updateDragPreview(event);
+}
+
+function finishDrag(event) {
+  const drag = editorState.drag;
+  if (!drag) return;
+  editorState.drag = null;
+  removeDragPreview();
+  if (!drag.moved) return;
+
+  const targetCell = getCellFromPoint(event.clientX, event.clientY);
+  if (!targetCell) {
+    deleteAnimal(drag.id);
+    setTemporaryStatus("已删除");
+    return;
+  }
+  moveAnimalTo(drag.id, targetCell.x, targetCell.y);
+}
+
+function updateDragPreview(event) {
+  const drag = editorState.drag;
+  const animal = drag ? findAnimalById(drag.id) : null;
+  if (!animal) return;
+
+  const rect = boardEl.getBoundingClientRect();
+  const localX = event.clientX - rect.left;
+  const localY = event.clientY - rect.top;
+  const label = `小猪朝${editorState.dirs[animal.dir].label}`;
+  let preview = boardEl.querySelector(".editor-drag-preview");
+  if (!preview) {
+    preview = document.createElement("span");
+    preview.className = "pig animal-pig editor-drag-preview";
+    preview.innerHTML = `<span class="pig-shape" aria-hidden="true"></span>`;
+    boardEl.appendChild(preview);
+  }
+  preview.setAttribute("aria-label", label);
+  preview.style.left = `${localX}px`;
+  preview.style.top = `${localY}px`;
+  preview.style.setProperty("--z", 220);
+
+  let target = boardEl.querySelector(".editor-drag-target");
+  if (!target) {
+    target = document.createElement("span");
+    target.className = "editor-drag-target";
+    boardEl.appendChild(target);
+  }
+
+  const targetCell = getCellFromPoint(event.clientX, event.clientY);
+  if (!targetCell) {
+    target.className = "editor-drag-target is-delete";
+    target.textContent = "松手删除";
+    target.style.removeProperty("--x");
+    target.style.removeProperty("--y");
+    target.style.left = `${Math.min(Math.max(localX, 42), rect.width - 42)}px`;
+    target.style.top = `${Math.min(Math.max(localY, 24), rect.height - 24)}px`;
+    return;
+  }
+
+  const movedAnimal = { ...animal, x: targetCell.x, y: targetCell.y };
+  target.className = `editor-drag-target${canPlace(movedAnimal, animal.id) ? "" : " is-invalid"}`;
+  target.textContent = "";
+  target.style.removeProperty("left");
+  target.style.removeProperty("top");
+  target.style.setProperty("--x", targetCell.x);
+  target.style.setProperty("--y", targetCell.y);
+}
+
+function removeDragPreview() {
+  boardEl.querySelector(".editor-drag-preview")?.remove();
+  boardEl.querySelector(".editor-drag-target")?.remove();
+}
+
+function createAnimalAt(x, y) {
   const animal = {
     x,
     y,
-    dir,
+    dir: editorState.dir,
     id: `edit-${Date.now()}-${editorState.animals.length}`,
     active: true,
   };
-  if (!canPlace(animal)) return null;
+  if (!canPlace(animal)) {
+    setTemporaryStatus("这里放不下");
+    return;
+  }
   editorState.animals.push(animal);
   editorState.selectedAnimalId = animal.id;
-  editorState.lastAdjustedAnimalId = animal.id;
-  editorState.dir = animal.dir;
-  setActiveInspection(animal);
+  setDirty(true);
   renderEditor();
-  return animal;
 }
 
-function handleBoardPointerDown(event) {
-  if (event.button !== 0 || event.isPrimary === false) return;
-  const cell = getCellFromPointer(event);
-  if (!cell) return;
-  const hit = findAnimalAtCell(cell.x, cell.y);
-  if (!hit) return;
-
-  selectAnimal(hit.id);
-  editorState.drag = {
-    animalId: hit.id,
-    pointerId: event.pointerId,
-    from: { x: hit.x, y: hit.y },
-    pending: { x: hit.x, y: hit.y },
-    moved: false,
-    valid: true,
-  };
-  boardEl.setPointerCapture?.(event.pointerId);
-  updateRenderedSelection();
-  updateStatus();
-  event.preventDefault();
+function moveSelectedAnimal(x, y) {
+  moveAnimalTo(editorState.selectedAnimalId, x, y);
 }
 
-function handleBoardPointerMove(event) {
-  const drag = editorState.drag;
-  if (!drag || drag.pointerId !== event.pointerId) return;
-  const animal = findAnimalById(drag.animalId);
-  const cell = getCellFromPointer(event);
-  if (!animal || !cell) return;
-
-  drag.pending = cell;
-  drag.moved = drag.moved || cell.x !== drag.from.x || cell.y !== drag.from.y;
-  const movedAnimal = { ...animal, x: cell.x, y: cell.y };
-  drag.valid = canPlace(movedAnimal, animal.id);
-  previewDraggedAnimal(movedAnimal, drag.valid);
-  event.preventDefault();
-}
-
-function handleBoardPointerUp(event) {
-  const drag = editorState.drag;
-  if (!drag || drag.pointerId !== event.pointerId) return;
-  const animal = findAnimalById(drag.animalId);
-  boardEl.releasePointerCapture?.(event.pointerId);
-
-  if (animal && drag.moved) {
-    if (drag.valid) {
-      Object.assign(animal, drag.pending);
-      editorState.lastAdjustedAnimalId = animal.id;
-      setActiveInspection(animal);
-    } else {
-      editorState.lastAdjustedAnimalId = animal.id;
-      setInvalidActionInspection(animal, "拖动后的位置不可用：越过编辑区域或与其他小猪重叠");
-    }
+function moveAnimalTo(id, x, y) {
+  const animal = findAnimalById(id);
+  if (!animal) return;
+  const movedAnimal = { ...animal, x, y };
+  if (!canPlace(movedAnimal, animal.id)) {
+    setTemporaryStatus("目标位置不可用");
+    return;
   }
-
-  editorState.suppressClick = drag.moved;
-  editorState.drag = null;
-  renderEditor();
-  event.preventDefault();
-}
-
-function cancelBoardDrag(event) {
-  if (!editorState.drag) return;
-  if (event && editorState.drag.pointerId !== event.pointerId) return;
-  editorState.drag = null;
+  Object.assign(animal, { x, y });
+  editorState.selectedAnimalId = animal.id;
+  editorState.dir = animal.dir;
+  setDirty(true);
   renderEditor();
 }
 
-function getCellFromPointer(event) {
+function getCellFromPoint(clientX, clientY) {
   const rect = boardEl.getBoundingClientRect();
-  const cellSize = rect.width / editorState.board.cols;
-  const x = Math.floor((event.clientX - rect.left) / cellSize);
-  const y = Math.floor((event.clientY - rect.top) / cellSize);
-  if (x < 0 || x >= editorState.board.cols || y < 0 || y >= editorState.board.rows) {
+  if (
+    clientX < rect.left ||
+    clientX >= rect.right ||
+    clientY < rect.top ||
+    clientY >= rect.bottom
+  ) {
     return null;
   }
-  return { x, y };
-}
-
-function previewDraggedAnimal(animal, isValid) {
-  const element = boardEl.querySelector(getAnimalSelector(animal.id));
-  if (!element) return;
-  const center = getAnimalCenter(animal);
-  element.style.setProperty("--x", center.x);
-  element.style.setProperty("--y", center.y);
-  element.style.setProperty("--z", Math.round(center.y * 2 + 120));
-  element.classList.toggle("is-invalid", !isValid);
+  const cellWidth = rect.width / editorState.board.cols;
+  const cellHeight = rect.height / editorState.board.rows;
+  return {
+    x: Math.floor((clientX - rect.left) / cellWidth),
+    y: Math.floor((clientY - rect.top) / cellHeight),
+  };
 }
 
 function selectAnimal(id) {
-  editorState.selectedAnimalId = id;
-  editorState.lastAdjustedAnimalId = id;
   const animal = findAnimalById(id);
-  if (animal) editorState.dir = animal.dir;
-  if (animal) setActiveInspection(animal);
-}
-
-function updateRenderedSelection() {
-  boardEl.querySelectorAll(".pig").forEach((pig) => {
-    pig.classList.toggle("is-selected", pig.dataset.id === editorState.selectedAnimalId);
-  });
-}
-
-function rotateSelectedAnimal(step) {
-  const animal = getSelectedAnimal();
   if (!animal) return;
-  const rotated = getRotatedAnimal(animal, step);
-  Object.assign(animal, rotated);
+  editorState.selectedAnimalId = id;
   editorState.dir = animal.dir;
-  editorState.lastAdjustedAnimalId = animal.id;
-  clearActiveInspection();
   renderEditor();
 }
 
-function getRotatedAnimal(animal, step) {
-  const order = ["up", "right", "down", "left"];
-  const index = order.indexOf(animal.dir);
-  const nextIndex = (index + step + order.length) % order.length;
-  return { ...animal, dir: order[nextIndex] };
+function deleteAnimal(id) {
+  editorState.animals = editorState.animals.filter((animal) => animal.id !== id);
+  if (editorState.selectedAnimalId === id) {
+    editorState.selectedAnimalId = null;
+  }
+  setDirty(true);
+  renderEditor();
 }
 
-function deleteSelectedAnimal() {
-  const animal = getSelectedAnimal();
-  if (!animal) return false;
-  editorState.animals = editorState.animals.filter((item) => item.id !== animal.id);
+function rotateSelectedDirection() {
+  const currentIndex = DIRECTIONS.indexOf(editorState.dir);
+  const nextDir = DIRECTIONS[(Math.max(0, currentIndex) + 1) % DIRECTIONS.length];
+  setDirection(nextDir);
+}
+
+function setDirection(dir) {
+  editorState.dir = dir;
+  const selected = findAnimalById(editorState.selectedAnimalId);
+  if (selected) {
+    selected.dir = dir;
+    setDirty(true);
+  }
+  renderEditor();
+}
+
+function renderControls() {
+  const selected = findAnimalById(editorState.selectedAnimalId);
+  selectedInfoEl.textContent = selected
+    ? `选中：${selected.x},${selected.y}，朝${editorState.dirs[selected.dir].label}`
+    : "未选中小猪";
+}
+
+function renderStats() {
+  const validation = editorState.validation;
+  const density = getDensityPercent(validation.total);
+  const directionCounts = getDirectionCounts(editorState.animals);
+  const hardRiskCount =
+    validation.invalidIds.size +
+    validation.overlapIds.size +
+    validation.collisionPairs.length +
+    validation.compactDeadlockCycles.length;
+  const statusText = hardRiskCount === 0 ? "通过" : `${hardRiskCount} 项风险`;
+
+  pigCountEl.textContent = `小猪 ${validation.total}`;
+  validationStateEl.textContent = statusText;
+  validationStateEl.classList.toggle("is-ok", hardRiskCount === 0);
+  validationStateEl.classList.toggle("is-danger", hardRiskCount > 0);
+
+  const metrics = [
+    ["棋盘", `${editorState.board.cols}×${editorState.board.rows}`],
+    ["小猪", validation.total],
+    ["密度", `${density}%`],
+    ["可逃", validation.openCount],
+    ["最长链", validation.longestChain],
+    ["风险", hardRiskCount],
+    ["朝向", `上${directionCounts.up} 右${directionCounts.right} 下${directionCounts.down} 左${directionCounts.left}`],
+    ["提示", getDifficultyHint(validation, density)],
+  ];
+
+  metricsEl.innerHTML = metrics
+    .map(
+      ([label, value]) => `
+        <div class="editor-metric">
+          <span>${label}</span>
+          <strong>${value}</strong>
+        </div>
+      `,
+    )
+    .join("");
+
+  const issues = getValidationIssues(validation, density);
+  issuesEl.innerHTML = issues.length
+    ? issues.map((issue) => `<div class="editor-issue is-${issue.level}">${issue.text}</div>`).join("")
+    : `<div class="editor-empty-note">当前没有明显问题。</div>`;
+}
+
+function generateCurrentLevel() {
+  const targetCount = getRequestedPigCount();
+  const generatedAnimals = generateLevelAnimals(targetCount, getCurrentPlayArea());
+  if (!generatedAnimals) {
+    setTemporaryStatus("生成失败，请减少数量");
+    return;
+  }
+  setCurrentAnimals(generatedAnimals);
+  saveCurrentLevelDraft();
+  setDirty(true);
+  renderEditor();
+  setTemporaryStatus(`本关已生成 ${targetCount} 只`);
+}
+
+function createNewLevel() {
+  saveCurrentLevelDraft();
+  const nextId = Math.max(0, ...editorState.levels.map((level) => Number(level.id) || 0)) + 1;
+  const source = editorState.levels[editorState.levelIndex] ?? {};
+  const targetCount = getRequestedPigCount();
+  const area = getDefaultPlayArea();
+  const generatedAnimals = generateLevelAnimals(targetCount, area);
+  if (!generatedAnimals) {
+    setTemporaryStatus("生成失败，请减少数量");
+    return;
+  }
+  editorState.levels.push({
+    id: nextId,
+    name: `第${nextId}关`,
+    animalType: source.animalType ?? "pig",
+    playArea: area,
+    animals: generatedAnimals,
+  });
+  renderLevelOptions();
+  loadLevel(editorState.levels.length - 1);
+  setDirty(true);
+  setTemporaryStatus(`已新增 ${targetCount} 只`);
+}
+
+function setCurrentAnimals(animals) {
+  const stamp = Date.now();
+  editorState.animals = animals.map((animal, animalIndex) => ({
+    ...animal,
+    id: `edit-${stamp}-${animalIndex}`,
+    active: true,
+  }));
   editorState.selectedAnimalId = editorState.animals[0]?.id ?? null;
-  editorState.lastAdjustedAnimalId = editorState.selectedAnimalId;
   if (editorState.selectedAnimalId) {
     editorState.dir = findAnimalById(editorState.selectedAnimalId).dir;
   }
-  if (editorState.selectedAnimalId) {
-    setActiveInspection(findAnimalById(editorState.selectedAnimalId));
-  } else {
-    clearActiveInspection();
-  }
+}
+
+function clearCurrentLevel() {
+  editorState.animals = [];
+  editorState.selectedAnimalId = null;
+  setDirty(true);
   renderEditor();
+}
+
+function getRequestedPigCount() {
+  const fallback = editorState.animals.length || 30;
+  const maxCount = Math.floor(getPlayableCellCount(getCurrentPlayArea(), getBoardOptions()) / 2);
+  const value = Math.round(Number(generateCountInput.value) || fallback);
+  const count = Math.max(1, Math.min(value, Math.min(90, maxCount)));
+  generateCountInput.value = String(count);
+  return count;
+}
+
+function generateLevelAnimals(targetCount, area) {
+  let best = null;
+  for (let attempt = 0; attempt < GENERATOR_ATTEMPTS; attempt += 1) {
+    const animals = seedGeneratedAnimals(targetCount, area);
+    if (animals.length !== targetCount) continue;
+    repairGeneratedAnimals(animals, area);
+    const validation = validateEditorLevelAnimals(animals, area);
+    const score = getGenerationScore(validation, targetCount);
+    if (!best || score < best.score) best = { animals: animals.map(stripAnimal), score, validation };
+    if (isGenerationGood(validation, targetCount)) return animals.map(stripAnimal);
+  }
+  if (best && hasNoHardGenerationRisk(best.validation)) return best.animals;
+  return null;
+}
+
+function seedGeneratedAnimals(targetCount, area) {
+  const animals = [];
+  const center = {
+    x: area.x + area.cols / 2,
+    y: area.y + area.rows / 2,
+  };
+  const candidates = buildPlacementCandidates(area).sort((first, second) => {
+    const firstDistance = getNormalizedCenterDistance(first, center, area);
+    const secondDistance = getNormalizedCenterDistance(second, center, area);
+    return firstDistance + Math.random() * 0.55 - (secondDistance + Math.random() * 0.55);
+  });
+
+  let misses = 0;
+  while (animals.length < targetCount && misses < candidates.length * 8) {
+    const candidate = weightedPickCandidate(candidates, animals.length, targetCount, center, area);
+    const animal = {
+      ...candidate,
+      id: `gen-${animals.length}-${Date.now()}-${Math.round(Math.random() * 100000)}`,
+      active: true,
+    };
+    if (canPlaceInList(animal, animals, null, area)) {
+      animals.push(animal);
+      misses = 0;
+    } else {
+      misses += 1;
+    }
+  }
+  return animals;
+}
+
+function buildPlacementCandidates(area) {
+  const candidates = [];
+  for (let y = area.y; y < area.y + area.rows; y += 1) {
+    for (let x = area.x; x < area.x + area.cols; x += 1) {
+      DIRECTIONS.forEach((dir) => {
+        const animal = { x, y, dir, id: "candidate", active: true };
+        if (isAnimalOnValidCells(animal, area, getBoardOptions())) candidates.push({ x, y, dir });
+      });
+    }
+  }
+  return candidates;
+}
+
+function weightedPickCandidate(candidates, placedCount, targetCount, center, area) {
+  const density = placedCount / Math.max(1, targetCount);
+  let best = candidates[Math.floor(Math.random() * candidates.length)];
+  let bestScore = -Infinity;
+  const sampleCount = Math.min(38, candidates.length);
+  for (let i = 0; i < sampleCount; i += 1) {
+    const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+    const centerDistance = getNormalizedCenterDistance(candidate, center, area);
+    const centerBias = targetCount >= 55 ? 0.28 : 0.62;
+    const edgeBias = targetCount >= 65 && density > 0.68 ? centerDistance * 0.35 : 0;
+    const score = Math.random() + (1 - centerDistance) * centerBias + edgeBias;
+    if (score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function getNormalizedCenterDistance(candidate, center, area) {
+  const dx = (candidate.x + 0.5 - center.x) / Math.max(1, area.cols / 2);
+  const dy = (candidate.y + 0.5 - center.y) / Math.max(1, area.rows / 2);
+  return Math.min(1, Math.hypot(dx, dy));
+}
+
+function repairGeneratedAnimals(animals, area) {
+  for (let pass = 0; pass < GENERATOR_REPAIR_PASSES; pass += 1) {
+    const validation = validateEditorLevelAnimals(animals, area);
+    if (isGenerationGood(validation, animals.length)) return;
+
+    const riskIds = getGenerationRiskIds(validation);
+    if (riskIds.length === 0) {
+      adjustOpenCount(animals, area, validation);
+      continue;
+    }
+
+    const riskId = riskIds[Math.floor(Math.random() * riskIds.length)];
+    improveGeneratedAnimal(animals, riskId, area, validation);
+  }
+}
+
+function improveGeneratedAnimal(animals, animalId, area, currentValidation) {
+  const animal = animals.find((item) => item.id === animalId);
+  if (!animal) return false;
+  const currentScore = getGenerationScore(currentValidation, animals.length);
+  const options = getLocalGenerationOptions(animal, area).sort(() => Math.random() - 0.5);
+
+  for (const option of options) {
+    if (!canPlaceInList(option, animals, animal.id, area)) continue;
+    const original = { x: animal.x, y: animal.y, dir: animal.dir };
+    Object.assign(animal, { x: option.x, y: option.y, dir: option.dir });
+    const score = getGenerationScore(validateEditorLevelAnimals(animals, area), animals.length);
+    if (score <= currentScore) return true;
+    Object.assign(animal, original);
+  }
+  return false;
+}
+
+function getLocalGenerationOptions(animal, area) {
+  const options = [];
+  DIRECTIONS.forEach((dir) => options.push({ ...animal, dir }));
+  for (let radius = 1; radius <= 3; radius += 1) {
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+        DIRECTIONS.forEach((dir) => {
+          options.push({ ...animal, x: animal.x + dx, y: animal.y + dy, dir });
+        });
+      }
+    }
+  }
+  return options;
+}
+
+function adjustOpenCount(animals, area, validation) {
+  const range = getTargetOpenRange(animals.length);
+  if (validation.openCount <= range.max) return;
+  const openId = validation.openIds[Math.floor(Math.random() * validation.openIds.length)];
+  improveGeneratedAnimal(animals, openId, area, validation);
+}
+
+function getGenerationRiskIds(validation) {
+  return Array.from(new Set([
+    ...validation.invalidIds,
+    ...validation.overlapIds,
+    ...validation.collisionIds,
+    ...validation.compactDeadlockIds,
+  ]));
+}
+
+function hasNoHardGenerationRisk(validation) {
+  return (
+    validation.invalidIds.size === 0 &&
+    validation.overlapIds.size === 0 &&
+    validation.collisionPairs.length === 0 &&
+    validation.compactDeadlockCycles.length === 0
+  );
+}
+
+function isGenerationGood(validation, targetCount) {
+  if (!hasNoHardGenerationRisk(validation)) return false;
+  const range = getTargetOpenRange(targetCount);
+  if (validation.openCount < range.min || validation.openCount > range.max) return false;
+  if (targetCount >= 24 && validation.longestChain < 3) return false;
+  if (targetCount >= 55 && validation.longestChain < 4) return false;
   return true;
 }
 
-function updateControls() {
-  const hasSelection = Boolean(getSelectedAnimal());
-  eraseBtn.disabled = !hasSelection;
-  rotateBtn.disabled = !hasSelection;
+function getGenerationScore(validation, targetCount) {
+  const range = getTargetOpenRange(targetCount);
+  const hardRisk =
+    validation.invalidIds.size +
+    validation.overlapIds.size +
+    validation.collisionPairs.length * 2 +
+    validation.compactDeadlockCycles.length * 3;
+  const openPenalty =
+    validation.openCount < range.min
+      ? range.min - validation.openCount
+      : Math.max(0, validation.openCount - range.max);
+  const chainTarget = targetCount >= 55 ? 4 : targetCount >= 24 ? 3 : 1;
+  const chainPenalty = Math.max(0, chainTarget - validation.longestChain);
+  return hardRisk * 1000 + openPenalty * 24 + chainPenalty * 18;
 }
 
-function updateStatus() {
-  const level = getEditorLevel();
-  if (pigCountEl) pigCountEl.textContent = String(level.animals.length);
-  if (outputEl) outputEl.value = formatLevel(level);
-  updateControls();
-}
-
-function getEditorLevel() {
-  const source = editorState.levels[editorState.levelIndex];
+function getTargetOpenRange(targetCount) {
+  if (targetCount <= 8) return { min: 1, max: Math.max(2, targetCount) };
   return {
-    id: source.id,
-    name: `${source.name}编辑稿`,
-    animalType: source.animalType ?? "pig",
-    playArea: getCurrentPlayArea(),
-    flowRules: source.flowRules,
-    animals: editorState.animals.map((animal) => ({
-      x: animal.x,
-      y: animal.y,
-      dir: animal.dir,
-    })),
+    min: Math.max(2, Math.floor(targetCount * 0.04)),
+    max: Math.max(4, Math.ceil(targetCount * 0.18)),
   };
 }
 
 function saveCurrentLevelDraft() {
-  const source = editorState.levels[editorState.levelIndex];
-  if (!source) return;
-  const level = getEditorLevel();
-  Object.assign(source, {
-    name: source.name,
-    animalType: level.animalType,
-    playArea: level.playArea,
-    flowRules: level.flowRules,
-    animals: level.animals,
+  const level = editorState.levels[editorState.levelIndex];
+  if (!level) return;
+  Object.assign(level, {
+    animalType: level.animalType ?? "pig",
+    playArea: getCurrentPlayArea(),
+    animals: editorState.animals.map(stripAnimal),
   });
 }
 
-function formatLevel(level) {
-  const animals = level.animals
-    .map((animal) => `      { x: ${animal.x}, y: ${animal.y}, dir: "${animal.dir}" },`)
-    .join("\n");
-  const flowRules = formatFlowRules(level.flowRules);
-  const flowRulesBlock = flowRules ? `${flowRules}\n` : "";
-  return `{
-    id: ${level.id},
-    name: "${level.name}",
-    animalType: "${level.animalType}",
-    playArea: { x: ${level.playArea.x}, y: ${level.playArea.y}, cols: ${level.playArea.cols}, rows: ${level.playArea.rows} },
-${flowRulesBlock}    animals: [
-${animals}
-    ],
-  },`;
+function saveAllDrafts() {
+  saveCurrentLevelDraft();
+  window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(getNormalizedLevels()));
+  editorState.source = "draft";
+  setDirty(false);
+  setTemporaryStatus("草稿已保存");
+  updateSourceStatus();
 }
 
-function formatFlowRules(flowRules) {
-  if (!flowRules) return "";
-  const entries = Object.entries(flowRules)
-    .map(([key, value]) => `      ${key}: ${value},`)
-    .join("\n");
-  return `    flowRules: {\n${entries}\n    },`;
-}
-
-async function runGenerateTask(action, button) {
-  if (editorState.generating) return;
-  editorState.generating = true;
-  const label = button.textContent;
-  setGenerationControlsDisabled(true);
-  button.textContent = "生成中";
-  await new Promise((resolve) => window.setTimeout(resolve, 20));
+function loadInitialLevels(fallbackLevels) {
   try {
-    action();
-  } finally {
-    button.textContent = label;
-    setGenerationControlsDisabled(false);
-    editorState.generating = false;
-  }
-}
-
-function setGenerationControlsDisabled(disabled) {
-  generateBtn.disabled = disabled;
-  addLevelBtn.disabled = disabled;
-  deployBtn.disabled = disabled;
-  eraseBtn.disabled = disabled || !getSelectedAnimal();
-  rotateBtn.disabled = disabled || !getSelectedAnimal();
-  generateCountInput.disabled = disabled;
-  levelSelect.disabled = disabled;
-}
-
-function generateCurrentLevel() {
-  const source = editorState.levels[editorState.levelIndex];
-  const targetCount = getGenerateTargetCount();
-  const animals = generateLevelAnimals(source, targetCount);
-  editorState.animals = animals.map((animal, index) => ({ ...animal, id: `edit-${index}` }));
-  editorState.selectedAnimalId = editorState.animals[0]?.id ?? null;
-  editorState.lastAdjustedAnimalId = editorState.selectedAnimalId;
-  if (editorState.selectedAnimalId) {
-    setActiveInspection(findAnimalById(editorState.selectedAnimalId));
-  } else {
-    clearActiveInspection();
-  }
-  saveCurrentLevelDraft();
-  syncGenerateCount(targetCount);
-  renderEditor();
-}
-
-function addGeneratedLevel() {
-  saveCurrentLevelDraft();
-  const source = editorState.levels[editorState.levelIndex];
-  const targetCount = getGenerateTargetCount();
-  const animals = generateLevelAnimals(source, targetCount);
-  const nextLevelNumber = editorState.levels.length + 1;
-  const nextId = Math.max(0, ...editorState.levels.map((level) => Number(level.id) || 0)) + 1;
-  const generatedLevel = {
-    id: nextId,
-    name: `新关卡${nextLevelNumber}`,
-    animalType: source.animalType ?? "pig",
-    playArea: source.playArea,
-    flowRules: source.flowRules,
-    animals: animals.map((animal) => ({
-      x: animal.x,
-      y: animal.y,
-      dir: animal.dir,
-    })),
-  };
-
-  editorState.levels.push(generatedLevel);
-  renderLevelOptions();
-  loadLevel(editorState.levels.length - 1);
-  syncGenerateCount(targetCount);
-}
-
-function deployLevelsToGame() {
-  saveCurrentLevelDraft();
-  const levels = editorState.levels.map(normalizeLevelForDeploy);
-  window.localStorage.setItem(DEPLOYED_LEVELS_STORAGE_KEY, JSON.stringify(levels));
-  deployBtn.textContent = "已部署";
-  window.setTimeout(() => {
-    deployBtn.textContent = "部署";
-  }, 1200);
-}
-
-function readDeployedLevels(fallbackLevels) {
-  try {
-    const raw = window.localStorage.getItem(DEPLOYED_LEVELS_STORAGE_KEY);
-    if (!raw) return fallbackLevels;
+    const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) {
+      editorState.source = "template";
+      return createBlankEditorLevels(fallbackLevels);
+    }
     const levels = JSON.parse(raw);
-    return Array.isArray(levels) && levels.length > 0 ? levels : fallbackLevels;
+    if (Array.isArray(levels) && levels.length > 0) {
+      editorState.source = "draft";
+      return levels.map(normalizeLevel);
+    }
+    editorState.source = "template";
+    return createBlankEditorLevels(fallbackLevels);
   } catch (error) {
-    return fallbackLevels;
+    editorState.source = "template";
+    return createBlankEditorLevels(fallbackLevels);
   }
 }
 
-function normalizeLevelForDeploy(level) {
+function reloadOfficialLevels() {
+  if (editorState.dirty && !window.confirm("当前关卡还没保存，确定重载正式关卡吗？")) return;
+  window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+  window.localStorage.removeItem(DEPLOYED_LEVELS_STORAGE_KEY);
+  editorState.levels = createBlankEditorLevels(editorState.officialLevels);
+  editorState.source = "template";
+  renderLevelOptions();
+  loadLevel(Math.min(editorState.levelIndex, editorState.levels.length - 1));
+  setTemporaryStatus("已重置为空白 10×16");
+  updateSourceStatus();
+}
+
+function playtestCurrentLevels() {
+  saveCurrentLevelDraft();
+  const levels = getNormalizedLevels();
+  window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(levels));
+  window.localStorage.setItem(DEPLOYED_LEVELS_STORAGE_KEY, JSON.stringify(levels));
+  editorState.source = "draft";
+  setDirty(false);
+  setTemporaryStatus("已准备试玩");
+  updateSourceStatus();
+  window.open("./index.html?from=level-editor-preview", "_blank");
+}
+
+async function deployOfficialLevels() {
+  saveCurrentLevelDraft();
+  const levels = getNormalizedLevels();
+
+  const deployed = await deployLevelsToLocalFile(levels);
+  if (!deployed) return;
+
+  window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+  window.localStorage.removeItem(DEPLOYED_LEVELS_STORAGE_KEY);
+  editorState.officialLevels = levels.map(normalizeLevel);
+  editorState.levels = levels.map(normalizeLevel);
+  editorState.source = "official";
+  setDirty(false);
+  setTemporaryStatus("已部署到本机正式版");
+  updateSourceStatus();
+}
+
+async function deployLevelsToLocalFile(levels) {
+  try {
+    const response = await fetch("./api/deploy-levels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ levels }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "部署失败");
+    }
+    return true;
+  } catch (error) {
+    setTemporaryStatus("请用关卡编辑器本地服务启动");
+    return false;
+  }
+}
+
+function exportForController() {
+  saveCurrentLevelDraft();
+  const level = normalizeLevel(editorState.levels[editorState.levelIndex]);
+  const payload = {
+    kind: "xiaozhukuaipao-level-export",
+    exportedAt: new Date().toISOString(),
+    level: {
+      id: level.id,
+      name: level.name,
+      animalType: level.animalType,
+      playArea: level.playArea,
+      pigCount: level.animals.length,
+      animals: level.animals,
+    },
+    check: getExportCheck(editorState.validation),
+  };
+  exportTextEl.value = JSON.stringify(payload, null, 2);
+  exportTextEl.focus();
+  exportTextEl.select();
+}
+
+async function copyExportText() {
+  if (!exportTextEl.value.trim()) exportForController();
+  try {
+    await navigator.clipboard.writeText(exportTextEl.value);
+    setTemporaryStatus("已复制");
+  } catch (error) {
+    exportTextEl.focus();
+    exportTextEl.select();
+    setTemporaryStatus("请手动复制");
+  }
+}
+
+function normalizeLevel(level) {
   return {
     id: level.id,
     name: level.name,
     animalType: level.animalType ?? "pig",
-    playArea: level.playArea,
-    ...(level.flowRules ? { flowRules: level.flowRules } : {}),
-    animals: level.animals.map((animal) => ({
-      x: animal.x,
-      y: animal.y,
-      dir: animal.dir,
-      ...(animal.type ? { type: animal.type } : {}),
-    })),
+    playArea: normalizePlayArea(level.playArea),
+    animals: (level.animals ?? []).map(stripAnimal),
   };
 }
 
-function generateLevelAnimals(source, targetCount) {
-  const area = getCurrentPlayArea();
-  let best = [];
-  let bestScore = Infinity;
-
-  const profiles = getDesignProfiles(area);
-  const profileCells = profiles.map((profile) => ({
-    profile,
-    cells: getWeightedPlayableCells(area, profile),
+function createBlankEditorLevels(sourceLevels) {
+  const levels = sourceLevels.length > 0 ? sourceLevels : [{ id: 1, name: "第1关" }];
+  return levels.map((level, index) => ({
+    id: level.id ?? index + 1,
+    name: level.name ?? `第${index + 1}关`,
+    animalType: level.animalType ?? "pig",
+    playArea: getDefaultPlayArea(),
+    animals: [],
   }));
-  const attemptCount = getGenerateAttemptCount(targetCount);
-  const missLimit = Math.min(900, Math.max(260, targetCount * 26));
+}
 
-  for (let attempt = 0; attempt < attemptCount; attempt += 1) {
-    const { profile, cells } = profileCells[attempt % profileCells.length];
-    const animals = [];
-    let misses = 0;
-    while (animals.length < targetCount && misses < missLimit) {
-      const cell = pickWeightedCell(cells);
-      const animal = {
-        x: cell.x,
-        y: cell.y,
-        dir: pickDesignedDirection(cell, profile, area),
-        id: `gen-${attempt}-${animals.length}`,
-        active: true,
-      };
-      if (
-        canPlaceInList(animal, animals, area) &&
-        !hasSameDirectionLaneConflict(animal, animals)
-      ) {
-        animals.push(animal);
-        misses = 0;
-      } else {
-        misses += 1;
-      }
-    }
-    const score = scoreAnimals(animals, source, targetCount, profile);
-    if (score < bestScore) {
-      bestScore = score;
-      best = animals;
-    }
+function normalizePlayArea(area) {
+  if (!area) return getDefaultPlayArea();
+  if (area.cols !== editorState.board.cols || area.rows !== editorState.board.rows) {
+    return getDefaultPlayArea();
   }
-
-  return best;
-}
-
-function getGenerateAttemptCount(targetCount) {
-  if (targetCount <= 24) return 44;
-  if (targetCount <= 45) return 32;
-  return 18;
-}
-
-function getGenerateTargetCount() {
-  const value = Number(generateCountInput?.value);
-  const max = getMaxGenerateCount();
-  const fallback = 30;
-  return Math.max(1, Math.min(max, Number.isFinite(value) && value > 0 ? Math.round(value) : fallback));
-}
-
-function syncGenerateCount(count) {
-  if (!generateCountInput) return;
-  const max = getMaxGenerateCount();
-  generateCountInput.max = String(max);
-  generateCountInput.value = String(Math.max(1, Math.min(max, Math.round(count))));
-}
-
-function getMaxGenerateCount() {
-  const area = getCurrentPlayArea();
-  let playableCells = 0;
-  for (let y = area.y; y < area.y + area.rows; y += 1) {
-    for (let x = area.x; x < area.x + area.cols; x += 1) {
-      if (isPlayableCell(x, y)) playableCells += 1;
-    }
-  }
-  return Math.max(1, Math.floor(playableCells / 2));
-}
-
-function scoreAnimals(animals, source, targetCount, profile) {
-  if (animals.length < targetCount) {
-    return (
-      Math.abs(targetCount - animals.length) * 5000 +
-      getDesignedShapeScore(animals, getCurrentPlayArea(), profile)
-    );
-  }
-
-  const level = {
-    ...source,
-    animals: animals.map((animal) => ({ x: animal.x, y: animal.y, dir: animal.dir })),
-  };
-  const rules = getEditorFlowRules(level);
-  const analysis = getFastFlowAnalysis(level);
-  const opposingCount = findOpposingLanePairs(level.animals).length;
-  const sameDirectionCount = findSameDirectionLanePairs(level.animals).length;
-  const deadlockCycleCount = getTightDeadlockCycleCount(animals);
-  const longestChain = analysis.exitLaneChains[0]?.count ?? 0;
-  const crowdedDirectionCount = analysis.openByDirection.filter(
-    (group) => group.count > rules.maxOpenPerDirection,
-  ).length;
-  return (
-    Math.abs(targetCount - animals.length) * 5000 +
-    opposingCount * 1400 +
-    sameDirectionCount * 1200 +
-    deadlockCycleCount * 1800 +
-    Math.max(0, analysis.initialOpenCount - rules.maxInitialOpen) * 260 +
-    Math.max(0, longestChain - rules.maxExitChain) * 520 +
-    crowdedDirectionCount * 180 +
-    getDesignedShapeScore(animals, getCurrentPlayArea(), profile) +
-    analysis.initialOpenCount
-  );
-}
-
-function getFastFlowAnalysis(level) {
-  const animals = level.animals.map((animal, index) => ({
-    ...animal,
-    id: `level-${level.id}-${index}`,
-    active: true,
-  }));
-  const initialOpen = getOpenAnimals(animals);
   return {
-    initialOpenCount: initialOpen.length,
-    openByDirection: groupOpenAnimalsByDirection(initialOpen),
-    exitLaneChains: getExitLaneChains(animals),
+    x: area.x ?? 0,
+    y: area.y ?? 0,
+    cols: area.cols,
+    rows: area.rows,
   };
 }
 
-function getDesignProfiles(area) {
-  return [
-    {
-      id: "wings",
-      weightCell: (cell) => {
-        const nx = getNormalized(cell.x, area.x, area.cols);
-        const ny = getNormalized(cell.y, area.y, area.rows);
-        const side = Math.abs(nx - 0.5) * 2;
-        const waist = Math.abs(ny - 0.5) < 0.26 ? 0.55 : 1;
-        return 0.18 + side * 2.8 * waist;
-      },
-    },
-    {
-      id: "diagonal",
-      weightCell: (cell) => {
-        const nx = getNormalized(cell.x, area.x, area.cols);
-        const ny = getNormalized(cell.y, area.y, area.rows);
-        const first = Math.abs(nx - ny);
-        const second = Math.abs(nx + ny - 1);
-        return 0.25 + 1.9 / (1 + Math.min(first, second) * 7);
-      },
-    },
-    {
-      id: "islands",
-      weightCell: (cell) => {
-        const nx = getNormalized(cell.x, area.x, area.cols);
-        const ny = getNormalized(cell.y, area.y, area.rows);
-        const anchors = [
-          { x: 0.24, y: 0.22 },
-          { x: 0.74, y: 0.31 },
-          { x: 0.34, y: 0.69 },
-          { x: 0.76, y: 0.78 },
-        ];
-        const nearest = anchors.reduce(
-          (best, anchor) => Math.min(best, Math.hypot(nx - anchor.x, ny - anchor.y)),
-          Infinity,
-        );
-        return 0.2 + 2.4 / (1 + nearest * 8);
-      },
-    },
-    {
-      id: "frame",
-      weightCell: (cell) => {
-        const nx = getNormalized(cell.x, area.x, area.cols);
-        const ny = getNormalized(cell.y, area.y, area.rows);
-        const edge = Math.min(nx, 1 - nx, ny, 1 - ny);
-        return 0.2 + Math.max(0, 0.48 - edge) * 4;
-      },
-    },
-  ];
+function getNormalizedLevels() {
+  return editorState.levels.map(normalizeLevel);
 }
 
-function getWeightedPlayableCells(area, profile) {
-  const cells = [];
-  for (let y = area.y; y < area.y + area.rows; y += 1) {
-    for (let x = area.x; x < area.x + area.cols; x += 1) {
-      if (!isPlayableCell(x, y)) continue;
-      cells.push({ x, y, weight: Math.max(0.05, profile.weightCell({ x, y })) });
-    }
-  }
-  return cells;
+function stripAnimal(animal) {
+  return {
+    x: animal.x,
+    y: animal.y,
+    dir: animal.dir,
+    ...(animal.type ? { type: animal.type } : {}),
+  };
 }
 
-function pickWeightedCell(cells) {
-  const total = cells.reduce((sum, cell) => sum + cell.weight, 0);
-  let cursor = Math.random() * total;
-  for (const cell of cells) {
-    cursor -= cell.weight;
-    if (cursor <= 0) return cell;
-  }
-  return cells[cells.length - 1];
+function validateEditorLevelAnimals(animals, area) {
+  const validation = validateBoardLevelAnimals(animals, area, getBoardOptions());
+  const compactDeadlockCycles = getCompactDeadlockCycles(validation, animals);
+  validation.compactDeadlockCycles = compactDeadlockCycles;
+  validation.compactDeadlockIds = new Set(compactDeadlockCycles.flatMap((cycle) => cycle.ids));
+  return validation;
 }
 
-function pickDesignedDirection(cell, profile, area) {
-  const midX = area.x + area.cols / 2;
-  const midY = area.y + area.rows / 2;
-  if (profile.id === "wings") {
-    return cell.x < midX ? randomItem(["right", "up", "down"]) : randomItem(["left", "up", "down"]);
-  }
-  if (profile.id === "diagonal") {
-    return cell.x + cell.y < midX + midY ? randomItem(["right", "down"]) : randomItem(["left", "up"]);
-  }
-  if (profile.id === "frame") {
-    if (cell.x <= area.x + 2) return randomItem(["right", "up", "down"]);
-    if (cell.x >= area.x + area.cols - 3) return randomItem(["left", "up", "down"]);
-    if (cell.y <= area.y + 2) return randomItem(["down", "left", "right"]);
-    return randomItem(["up", "left", "right"]);
-  }
-  return randomItem(Object.keys(editorState.dirs));
-}
-
-function getDesignedShapeScore(animals, area, profile) {
-  if (animals.length === 0) return 9999;
-  const mismatch = animals.reduce((sum, animal) => {
-    const center = getAnimalCenter(animal);
-    const weight = Math.max(0.05, profile.weightCell(center));
-    return sum + 1 / weight;
-  }, 0);
-  const isolatedCount = animals.filter((animal) => !hasNearbyAnimal(animal, animals)).length;
-  const overloadedLaneCount = getOverloadedVisualLaneCount(animals);
-  return mismatch * 18 + isolatedCount * 55 + overloadedLaneCount * 24;
-}
-
-function hasNearbyAnimal(animal, animals) {
-  const center = getAnimalCenter(animal);
-  return animals.some((other) => {
-    if (other.id === animal.id) return false;
-    const otherCenter = getAnimalCenter(other);
-    return Math.hypot(center.x - otherCenter.x, center.y - otherCenter.y) <= 3.2;
+function getCompactDeadlockCycles(validation, animals) {
+  const animalById = new Map(animals.map((animal) => [animal.id, animal]));
+  return validation.deadlockCycles.filter((cycle) => {
+    if (cycle.ids.length !== 4) return false;
+    const cycleAnimals = cycle.ids.map((id) => animalById.get(id));
+    if (cycleAnimals.some((animal) => !animal)) return false;
+    const dirs = new Set(cycleAnimals.map((animal) => animal.dir));
+    if (!DIRECTIONS.every((dir) => dirs.has(dir))) return false;
+    const cycleIds = new Set(cycle.ids);
+    return cycle.ids.every((id) => {
+      const edge = validation.blockGraph.get(id);
+      return edge && cycleIds.has(edge.blockerId) && edge.openCells <= 1;
+    });
   });
 }
 
-function getOverloadedVisualLaneCount(animals) {
-  const rows = new Map();
-  const cols = new Map();
-  animals.forEach((animal) => {
-    rows.set(animal.y, (rows.get(animal.y) ?? 0) + 1);
-    cols.set(animal.x, (cols.get(animal.x) ?? 0) + 1);
-  });
-  return [...rows.values(), ...cols.values()].filter((count) => count > 8).length;
+function getValidationIssues(validation, density) {
+  const issues = [];
+  if (validation.invalidIds.size > 0) {
+    issues.push({ level: "danger", text: `非法格：${validation.invalidIds.size} 只占到不可用格或棋盘外` });
+  }
+  if (validation.overlapIds.size > 0) {
+    issues.push({ level: "danger", text: `重叠：${validation.overlapIds.size} 只脚印重叠` });
+  }
+  if (validation.collisionPairs.length > 0) {
+    issues.push({ level: "danger", text: `对撞风险：${validation.collisionPairs.length} 组面对面互堵` });
+  }
+  if (validation.compactDeadlockCycles.length > 0) {
+    issues.push({ level: "danger", text: `环形死局：${validation.compactDeadlockCycles.length} 个四猪闭环` });
+  }
+  if (validation.total > 8 && validation.openCount > Math.max(5, Math.ceil(validation.total * 0.22))) {
+    issues.push({ level: "warning", text: "开局可逃数量偏多，可能太松" });
+  }
+  if (validation.total > 8 && validation.openCount <= 1) {
+    issues.push({ level: "warning", text: "开局可操作空间偏少，可能太堵" });
+  }
+  if (density > 78) {
+    issues.push({ level: "warning", text: "密度很高，手机编辑时注意重叠风险" });
+  }
+  return issues;
 }
 
-function getNormalized(value, start, size) {
-  if (size <= 1) return 0.5;
-  return (value - start) / (size - 1);
+function getExportCheck(validation) {
+  return {
+    pigCount: validation.total,
+    initialOpenCount: validation.openCount,
+    invalidCount: validation.invalidIds.size,
+    overlapCount: validation.overlapIds.size,
+    opposingRiskCount: validation.collisionPairs.length,
+    compactDeadlockCount: validation.compactDeadlockCycles.length,
+    longestChain: validation.longestChain,
+  };
+}
+
+function getDifficultyHint(validation, density) {
+  const hardRiskCount =
+    validation.invalidIds.size +
+    validation.overlapIds.size +
+    validation.collisionPairs.length +
+    validation.compactDeadlockCycles.length;
+  if (hardRiskCount > 0) return "风险较高";
+  if (validation.total > 8 && validation.openCount <= 1) return "偏堵";
+  if (validation.total > 8 && validation.openCount > Math.ceil(validation.total * 0.22)) return "偏简单";
+  if (density > 72) return "偏密";
+  return "正常";
+}
+
+function getDensityPercent(total) {
+  const playable = getPlayableCellCount(getCurrentPlayArea(), getBoardOptions());
+  if (playable === 0) return 0;
+  return Math.round((total * 2 * 100) / playable);
+}
+
+function getDirectionCounts(animals) {
+  return animals.reduce(
+    (counts, animal) => {
+      counts[animal.dir] += 1;
+      return counts;
+    },
+    { up: 0, right: 0, down: 0, left: 0 },
+  );
 }
 
 function canPlace(animal, ignoreId = null) {
-  return canPlaceInList(
-    animal,
-    editorState.animals.filter((item) => item.id !== ignoreId),
-    getCurrentPlayArea(),
-  );
+  const area = getCurrentPlayArea();
+  if (!isAnimalOnValidCells(animal, area, getBoardOptions())) return false;
+  return editorState.animals
+    .filter((item) => item.id !== ignoreId)
+    .every((item) => !getFootprint(animal).some((cell) =>
+      getFootprint(item).some((other) => other.x === cell.x && other.y === cell.y),
+    ));
 }
 
-function canPlaceInList(animal, animals, area) {
-  const footprint = getFootprint(animal);
-  const insidePlayArea = footprint.every(
-    (cell) =>
-      cell.x >= area.x &&
-      cell.x < area.x + area.cols &&
-      cell.y >= area.y &&
-      cell.y < area.y + area.rows,
-  );
-  if (!insidePlayArea || !isAnimalOnPlayableCells(animal)) return false;
-  return animals.every((item) => {
-    const occupied = getFootprint(item);
-    return !footprint.some((cell) =>
-      occupied.some((other) => other.x === cell.x && other.y === cell.y),
-    );
-  });
+function canPlaceInList(animal, animals, ignoreId, area) {
+  if (!isAnimalOnValidCells(animal, area, getBoardOptions())) return false;
+  const cells = getFootprint(animal);
+  return animals
+    .filter((item) => item.id !== ignoreId)
+    .every((item) => !cells.some((cell) =>
+      getFootprint(item).some((other) => other.x === cell.x && other.y === cell.y),
+    ));
 }
 
-function getLocalInspection(animal) {
-  const opposingAnimals = getOpposingLaneAnimals(animal);
-  const sameDirectionAnimals = getSameDirectionLaneAnimals(animal);
-  const collisionIds = Array.from(
-    new Set([...opposingAnimals, ...sameDirectionAnimals].map((item) => item.id)),
-  );
-  const deadlockCycleIds = getDeadlockCycleIds(animal);
-  const deadzoneIds =
-    deadlockCycleIds.length > 2 && isTightDeadlockCycle(deadlockCycleIds)
-      ? deadlockCycleIds.filter((id) => id !== animal.id)
-      : [];
-  const risks = [];
-
-  if (opposingAnimals.length > 0) {
-    risks.push({
-      level: "danger",
-      text: `生成规避：同线对向 ${opposingAnimals.length} 只，会形成天然死锁`,
-    });
-  }
-
-  if (sameDirectionAnimals.length > 0) {
-    risks.push({
-      level: "danger",
-      text: `生成规避：同向追尾 ${sameDirectionAnimals.length} 只，会形成必然死局`,
-    });
-  }
-
-  if (deadzoneIds.length > 0) {
-    risks.push({
-      level: "danger",
-      text: `死局闭环：${deadlockCycleIds.length} 只小猪互相挡住`,
-    });
-  }
-
-  if (!canPlace(animal, animal.id)) {
-    risks.unshift({
-      level: "danger",
-      text: "当前位置不可用：越过可通行区域或与其他小猪重叠",
-    });
-  }
-
-  return {
-    targetId: animal.id,
-    neighborIds: deadzoneIds,
-    collisionIds,
-    deadzoneIds: Array.from(new Set(deadzoneIds)),
-    blockedSides: deadzoneIds.length,
-    risks,
-  };
+function getPigRiskClass(animal) {
+  const validation = editorState.validation;
+  const classes = [];
+  if (validation?.invalidIds.has(animal.id)) classes.push("is-invalid-risk");
+  if (validation?.overlapIds.has(animal.id)) classes.push("is-overlap-risk");
+  if (validation?.collisionIds.has(animal.id)) classes.push("is-collision-risk");
+  if (validation?.compactDeadlockIds.has(animal.id)) classes.push("is-compact-deadlock-risk");
+  return classes.length ? ` ${classes.join(" ")}` : "";
 }
 
-function getOpposingLaneAnimals(animal) {
-  return editorState.animals.filter((item) => {
-    if (item.id === animal.id || !item.active) return false;
-    return isOpposingLanePair(animal, item);
-  });
+function setDirty(isDirty) {
+  editorState.dirty = isDirty;
+  statusEl.textContent = isDirty ? "未保存" : "已同步";
+  statusEl.classList.toggle("is-dirty", isDirty);
+  statusEl.classList.toggle("is-saved", !isDirty);
+  updateSourceStatus();
 }
 
-function getSameDirectionLaneAnimals(animal) {
-  return editorState.animals.filter((item) => {
-    if (item.id === animal.id || item.active === false) return false;
-    return isSameDirectionLanePair(animal, item);
-  });
+function setTemporaryStatus(message) {
+  const previous = editorState.dirty ? "未保存" : "已同步";
+  statusEl.textContent = message;
+  window.setTimeout(() => {
+    statusEl.textContent = previous;
+  }, 1200);
 }
 
-function getDeadlockCycleIds(animal) {
-  const chain = [animal.id];
-  const visited = new Set(chain);
-  let current = animal;
-
-  for (let depth = 0; depth < editorState.animals.length; depth += 1) {
-    const blocker = findFirstBlockingAnimal(current);
-    if (!blocker) return [];
-    if (blocker.id === animal.id) return chain;
-    if (visited.has(blocker.id)) return [];
-    chain.push(blocker.id);
-    visited.add(blocker.id);
-    current = blocker;
-  }
-
-  return [];
-}
-
-function findFirstBlockingAnimal(animal) {
-  const blocker = findBlockerInAnimals(editorState.animals, animal);
-  if (!blocker) return null;
-  return findAnimalAtCell(blocker.x, blocker.y) ?? null;
-}
-
-function isTightDeadlockCycle(ids) {
-  return ids.every((id) => {
-    const animal = findAnimalById(id);
-    const blocker = animal ? findBlockerInAnimals(editorState.animals, animal) : null;
-    return Boolean(blocker && blocker.openCells <= 1);
-  });
-}
-
-function getTightDeadlockCycleCount(animals) {
-  const cycles = new Set();
-  animals.forEach((animal) => {
-    const ids = getDeadlockCycleIdsInList(animals, animal);
-    if (ids.length <= 2 || !isTightDeadlockCycleInList(animals, ids)) return;
-    cycles.add([...ids].sort().join("|"));
-  });
-  return cycles.size;
-}
-
-function getDeadlockCycleIdsInList(animals, animal) {
-  const chain = [animal.id];
-  const visited = new Set(chain);
-  let current = animal;
-
-  for (let depth = 0; depth < animals.length; depth += 1) {
-    const blocker = findFirstBlockingAnimalInList(animals, current);
-    if (!blocker) return [];
-    if (blocker.id === animal.id) return chain;
-    if (visited.has(blocker.id)) return [];
-    chain.push(blocker.id);
-    visited.add(blocker.id);
-    current = blocker;
-  }
-
-  return [];
-}
-
-function findFirstBlockingAnimalInList(animals, animal) {
-  const blocker = findBlockerInAnimals(animals, animal);
-  if (!blocker) return null;
-  return (
-    animals.find(
-      (item) =>
-        item.active &&
-        item.id !== animal.id &&
-        getFootprint(item).some((cell) => cell.x === blocker.x && cell.y === blocker.y),
-    ) ?? null
-  );
-}
-
-function isTightDeadlockCycleInList(animals, ids) {
-  return ids.every((id) => {
-    const animal = animals.find((item) => item.id === id);
-    const blocker = animal ? findBlockerInAnimals(animals, animal) : null;
-    return Boolean(blocker && blocker.openCells <= 1);
-  });
-}
-
-function getSelectedAnimal() {
-  return findAnimalById(editorState.selectedAnimalId);
+function updateSourceStatus() {
+  const sourceText = {
+    draft: "本机草稿",
+    official: "本机正式",
+    template: "10×16 空白模板",
+  }[editorState.source] ?? "10×16 空白模板";
+  sourceStatusEl.textContent = `来源：${sourceText}`;
+  sourceStatusEl.classList.toggle("is-draft", editorState.source === "draft");
+  sourceStatusEl.classList.toggle("is-deployed", editorState.source !== "draft");
 }
 
 function findAnimalById(id) {
   if (!id) return null;
   return editorState.animals.find((animal) => animal.id === id) ?? null;
-}
-
-function formatAnimalPosition(animal) {
-  return `${animal.x},${animal.y}`;
-}
-
-function getCellKey(cell) {
-  return `${cell.x}:${cell.y}`;
-}
-
-function getAnimalSelector(id) {
-  return `[data-id="${String(id).replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"]`;
-}
-
-function setActiveInspection(animal) {
-  editorState.activeInspection = animal ? getLocalInspection(animal) : null;
-}
-
-function setInvalidActionInspection(animal, message) {
-  editorState.activeInspection = {
-    targetId: animal.id,
-    neighborIds: [],
-    collisionIds: [],
-    deadzoneIds: [],
-    blockedSides: 0,
-    risks: [{ level: "danger", text: message }],
-  };
-}
-
-function clearActiveInspection() {
-  editorState.activeInspection = null;
-}
-
-function getPigInspectionClass(animal) {
-  const inspection = editorState.activeInspection;
-  if (!inspection) return "";
-  const classes = [];
-  if (inspection.targetId === animal.id) classes.push("is-inspection-target");
-  if (inspection.collisionIds.includes(animal.id)) classes.push("is-collision-risk");
-  if (inspection.deadzoneIds.includes(animal.id)) classes.push("is-deadzone-risk");
-  return classes.length ? ` ${classes.join(" ")}` : "";
-}
-
-function isCellInsideArea(x, y, area) {
-  return (
-    x >= area.x &&
-    x < area.x + area.cols &&
-    y >= area.y &&
-    y < area.y + area.rows
-  );
-}
-
-function getCurrentPlayArea() {
-  return (
-    editorState.levels[editorState.levelIndex].playArea ?? {
-      x: 0,
-      y: 0,
-      cols: editorState.board.cols,
-      rows: editorState.board.rows,
-    }
-  );
 }
 
 function findAnimalAtCell(x, y) {
@@ -1040,269 +1050,23 @@ function findAnimalAtCell(x, y) {
   );
 }
 
-function getFootprint(animal) {
-  const dir = editorState.dirs[animal.dir];
-  return [
-    { x: animal.x, y: animal.y },
-    { x: animal.x - dir.dx, y: animal.y - dir.dy },
-  ];
+function getCurrentPlayArea() {
+  return editorState.levels[editorState.levelIndex]?.playArea ?? getDefaultPlayArea();
 }
 
-function isInsideBoardCell(x, y) {
-  return x >= 0 && x < editorState.board.cols && y >= 0 && y < editorState.board.rows;
-}
-
-function isCornerCutoutCell(x, y) {
-  const arcStart = editorState.cornerCutout?.arcStartCell;
-  if (!arcStart) return false;
-
-  const left = x < arcStart;
-  const right = x >= editorState.board.cols - arcStart;
-  const top = y < arcStart;
-  const bottom = y >= editorState.board.rows - arcStart;
-  if (!(left || right) || !(top || bottom)) return false;
-
-  const centerX = left ? arcStart : editorState.board.cols - arcStart;
-  const centerY = top ? arcStart : editorState.board.rows - arcStart;
-  const farthestX = left ? x : x + 1;
-  const farthestY = top ? y : y + 1;
-  return Math.hypot(farthestX - centerX, farthestY - centerY) > arcStart;
-}
-
-function isPlayableCell(x, y) {
-  return isInsideBoardCell(x, y) && !isCornerCutoutCell(x, y);
-}
-
-function isAnimalOnPlayableCells(animal) {
-  return getFootprint(animal).every((cell) => isPlayableCell(cell.x, cell.y));
-}
-
-function getAnimalCenter(animal) {
-  const cells = getFootprint(animal);
+function getDefaultPlayArea() {
   return {
-    x: cells.reduce((sum, cell) => sum + cell.x + 0.5, 0) / cells.length,
-    y: cells.reduce((sum, cell) => sum + cell.y + 0.5, 0) / cells.length,
+    x: 0,
+    y: 0,
+    cols: editorState.board.cols,
+    rows: editorState.board.rows,
   };
 }
 
-function findBlockerInAnimals(animals, animal) {
-  const dir = editorState.dirs[animal.dir];
-  for (let step = 1; ; step += 1) {
-    const movedAnimal = {
-      ...animal,
-      x: animal.x + dir.dx * step,
-      y: animal.y + dir.dy * step,
-    };
-    if (!isAnimalOnPlayableCells(movedAnimal)) return null;
-
-    const x = animal.x + dir.dx * step;
-    const y = animal.y + dir.dy * step;
-    const occupied = animals.some((item) => {
-      if (!item.active || item.id === animal.id) return false;
-      return getFootprint(item).some((cell) => cell.x === x && cell.y === y);
-    });
-    if (occupied) return { x, y, openCells: step - 1 };
-  }
-}
-
-function getOpenAnimals(animals) {
-  return animals.filter(
-    (animal) => animal.active && !findBlockerInAnimals(animals, animal),
-  );
-}
-
-function getLevelFlowAnalysis(level) {
-  const animals = level.animals.map((animal, index) => ({
-    ...animal,
-    id: `level-${level.id}-${index}`,
-    active: true,
-  }));
-  const initialOpen = getOpenAnimals(animals);
-  const openByDirection = groupOpenAnimalsByDirection(initialOpen);
-  const exitLaneChains = getExitLaneChains(animals);
-  const removalImpacts = animals.map((animal) => getRemovalImpact(animals, animal));
-  const worstRemoval = removalImpacts.reduce((worst, impact) => {
-    if (!worst) return impact;
-    return getRemovalImpactScore(impact) > getRemovalImpactScore(worst) ? impact : worst;
-  }, null);
+function getBoardOptions() {
   return {
-    total: animals.length,
-    initialOpenCount: initialOpen.length,
-    initialOpenRatio: animals.length > 0 ? initialOpen.length / animals.length : 0,
-    initialOpenIds: initialOpen.map((animal) => animal.id),
-    openByDirection,
-    exitLaneChains,
-    worstRemoval,
+    board: editorState.board,
+    cornerCutout: editorState.cornerCutout,
+    dirs: editorState.dirs,
   };
-}
-
-function getEditorFlowRules(level) {
-  return {
-    ...DEFAULT_FLOW_RULES,
-    ...(editorState.flowRules ?? {}),
-    ...(level.flowRules ?? {}),
-  };
-}
-
-function groupOpenAnimalsByDirection(animals) {
-  const groups = new Map();
-  animals.forEach((animal) => {
-    if (!groups.has(animal.dir)) groups.set(animal.dir, []);
-    groups.get(animal.dir).push(animal.id);
-  });
-  return Array.from(groups, ([dir, ids]) => ({ dir, count: ids.length, ids }));
-}
-
-function getRemovalImpact(animals, removedAnimal) {
-  const activeAnimals = animals.filter((animal) => animal.active);
-  const openBefore = getOpenAnimals(activeAnimals);
-  const openBeforeIds = new Set(openBefore.map((animal) => animal.id));
-  const afterRemoval = activeAnimals
-    .filter((animal) => animal.id !== removedAnimal.id)
-    .map((animal) => ({ ...animal }));
-  const openAfter = getOpenAnimals(afterRemoval);
-  const exitLaneChainsAfterRemoval = getExitLaneChains(afterRemoval);
-  const maxExitChainAfterRemoval = exitLaneChainsAfterRemoval.reduce(
-    (max, chain) => Math.max(max, chain.count),
-    0,
-  );
-
-  return {
-    removedId: removedAnimal.id,
-    remainingAfter: afterRemoval.length,
-    openAfterCount: openAfter.length,
-    openAfterIds: openAfter.map((animal) => animal.id),
-    newOpenCount: openAfter.filter((animal) => !openBeforeIds.has(animal.id)).length,
-    newOpenIds: openAfter
-      .filter((animal) => !openBeforeIds.has(animal.id))
-      .map((animal) => animal.id),
-    maxExitChainAfterRemoval,
-    exitLaneChainsAfterRemoval,
-  };
-}
-
-function getRemovalImpactScore(impact) {
-  return (
-    impact.openAfterCount * 10 +
-    impact.newOpenCount * 7 +
-    impact.maxExitChainAfterRemoval * 5
-  );
-}
-
-function isRemovalTooOpening(impact, rules) {
-  if (impact.remainingAfter <= rules.maxOpenAfterRemoval) return false;
-  return (
-    impact.openAfterCount > rules.maxOpenAfterRemoval ||
-    impact.newOpenCount > rules.maxNewOpenAfterRemoval ||
-    impact.maxExitChainAfterRemoval > rules.maxExitChainAfterRemoval
-  );
-}
-
-function getExitLaneChains(animals) {
-  const lanes = Array.from(new Set(animals.map(getExitLaneKey)));
-  return lanes
-    .map((laneKey) => getExitLaneChain(animals, laneKey))
-    .filter((chain) => chain.count > 0)
-    .sort((first, second) => second.count - first.count);
-}
-
-function getExitLaneChain(animals, laneKey) {
-  const simulated = animals.map((animal) => ({ ...animal }));
-  const ids = [];
-  while (true) {
-    const openAnimal = getOpenAnimals(simulated)
-      .filter((animal) => getExitLaneKey(animal) === laneKey)
-      .sort((first, second) => getExitDistance(first) - getExitDistance(second))[0];
-    if (!openAnimal) break;
-    ids.push(openAnimal.id);
-    openAnimal.active = false;
-  }
-  return { laneKey, count: ids.length, ids };
-}
-
-function getExitLaneKey(animal) {
-  const lane = animal.dir === "left" || animal.dir === "right" ? animal.y : animal.x;
-  return `${animal.dir}:${lane}`;
-}
-
-function getExitDistance(animal) {
-  if (animal.dir === "left") return animal.x;
-  if (animal.dir === "right") return editorState.board.cols - animal.x - 1;
-  if (animal.dir === "up") return animal.y;
-  return editorState.board.rows - animal.y - 1;
-}
-
-function findOpposingLanePairs(animals) {
-  const pairs = [];
-  for (let first = 0; first < animals.length; first += 1) {
-    for (let second = first + 1; second < animals.length; second += 1) {
-      if (isOpposingLanePair(animals[first], animals[second])) {
-        pairs.push({ first, second });
-      }
-    }
-  }
-  return pairs;
-}
-
-function findSameDirectionLanePairs(animals) {
-  const pairs = [];
-  for (let first = 0; first < animals.length; first += 1) {
-    for (let second = first + 1; second < animals.length; second += 1) {
-      if (isSameDirectionLanePair(animals[first], animals[second])) {
-        pairs.push({ first, second });
-      }
-    }
-  }
-  return pairs;
-}
-
-function hasSameDirectionLaneConflict(animal, animals) {
-  return animals.some((other) => isSameDirectionLanePair(animal, other));
-}
-
-function isSameDirectionLanePair(first, second) {
-  if (first.active === false || second.active === false || first.dir !== second.dir) return false;
-  return isFirstBlockerInFront(first, second) || isFirstBlockerInFront(second, first);
-}
-
-function isFirstBlockerInFront(animal, blocker) {
-  const dir = editorState.dirs[animal.dir];
-  for (let step = 1; ; step += 1) {
-    const movedAnimal = {
-      ...animal,
-      x: animal.x + dir.dx * step,
-      y: animal.y + dir.dy * step,
-    };
-    if (!isAnimalOnPlayableCells(movedAnimal)) return false;
-
-    const x = animal.x + dir.dx * step;
-    const y = animal.y + dir.dy * step;
-    if (getFootprint(blocker).some((cell) => cell.x === x && cell.y === y)) {
-      return true;
-    }
-  }
-}
-
-function isOpposingLanePair(first, second) {
-  if (first.x === second.x) {
-    return (
-      (first.y < second.y && first.dir === "down" && second.dir === "up") ||
-      (second.y < first.y && second.dir === "down" && first.dir === "up")
-    );
-  }
-  if (first.y === second.y) {
-    return (
-      (first.x < second.x && first.dir === "right" && second.dir === "left") ||
-      (second.x < first.x && second.dir === "right" && first.dir === "left")
-    );
-  }
-  return false;
-}
-
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function randomItem(items) {
-  return items[Math.floor(Math.random() * items.length)];
 }

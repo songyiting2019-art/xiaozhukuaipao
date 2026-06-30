@@ -1,16 +1,14 @@
-const DIRS = {
-  up: { dx: 0, dy: -1, rot: "0deg", label: "上" },
-  right: { dx: 1, dy: 0, rot: "90deg", label: "右" },
-  down: { dx: 0, dy: 1, rot: "180deg", label: "下" },
-  left: { dx: -1, dy: 0, rot: "270deg", label: "左" },
-};
-
-const OPPOSITE_DIRS = {
-  up: "down",
-  right: "left",
-  down: "up",
-  left: "right",
-};
+const {
+  DIRS,
+  OPPOSITE_DIRS,
+  BOARD,
+  getFootprint,
+  getAnimalCenter,
+  isInsideBoardCell,
+  isAnimalOnPlayableCells,
+  getCellKey,
+  isSameAnimal,
+} = window.PigEscapeBoardCore;
 
 const ANIMAL_TYPES = {
   pig: {
@@ -41,15 +39,6 @@ const PATH_EXIT = {
   gateExitYCells: -2.35,
   turnPauseMs: 16,
   fadeMs: 160,
-};
-
-const BOARD = {
-  cols: 12,
-  rows: 19,
-};
-
-const CORNER_CUTOUT = {
-  arcStartCell: 2,
 };
 
 const SCORE_RULES = {
@@ -174,11 +163,11 @@ const STAR_RULES = {
   twoStarMaxPerfectRatio: 0.7,
   threeStarMaxPerfectRatio: 0.92,
   threeStarAverageComboByLevel: [
-    9, 11, 13, 15, 17,
-    18, 19, 20, 22, 23,
-    24, 25, 26, 27, 28,
+    6, 7, 8, 9, 10,
+    11, 12, 13, 14, 15,
+    16, 17, 18, 19, 20,
   ],
-  fallbackThreeStarAverageCombo: 28,
+  fallbackThreeStarAverageCombo: 20,
   roundTo: 50,
 };
 
@@ -189,1596 +178,104 @@ const FIRECRACKER_START_DELAY_MS = 260;
 const FIRECRACKER_CHAIN_GAP_MS = 64;
 const FIRECRACKER_MOVE_MULTIPLIER = 0.68;
 
-const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV2";
+const AUDIO_BASE_PATH = "./assets/audio/";
+const AUDIO_FILES = {
+  bgmHome: "bgm-home-farm-light-v1.mp3",
+  bgmGame: "bgm-game-pasture-cheer-v2.mp3",
+  buttonTap: "sfx-button-tap-light-v3.mp3",
+  buttonBack: "sfx-button-back-soft-v1.mp3",
+  collectionSelect: "sfx-collection-select-soft-v1.mp3",
+  comboPop: "sfx-combo-pop-v1.mp3",
+  firecrackerPop: "sfx-firecracker-pop-v1.mp3",
+  levelCompleteStars: "sfx-level-complete-stars-v1.mp3",
+  pigExitGate: "sfx-pig-exit-gate-v1.mp3",
+  pigHitDizzy: "sfx-pig-hit-dizzy-v1.mp3",
+  pigRunGrass: "sfx-pig-run-grass-v1.mp3",
+  pigTapSnort: "sfx-pig-tap-tiny-oink-v2b.mp3",
+  toolFlipWoosh: "sfx-tool-flip-woosh-v1.mp3",
+  toolRemovePop: "sfx-tool-remove-pop-v1.mp3",
+  toolStimulantZap: "sfx-tool-stimulant-zap-v1.mp3",
+  unlockSparkle: "sfx-unlock-sparkle-v1.mp3",
+};
+
+const AUDIO_VOLUMES = {
+  bgmHome: 0.18,
+  bgmGame: 0.14,
+  buttonTap: 0.2,
+  buttonBack: 0.34,
+  collectionSelect: 0.3,
+  comboPop: 0.28,
+  firecrackerPop: 0.48,
+  levelCompleteStars: 0.44,
+  pigExitGate: 0.32,
+  pigHitDizzy: 0.38,
+  pigRunGrass: 0.22,
+  pigTapSnort: 0.24,
+  toolFlipWoosh: 0.34,
+  toolRemovePop: 0.34,
+  toolStimulantZap: 0.38,
+  unlockSparkle: 0.45,
+};
+
+const AUDIO_THROTTLE_MS = {
+  buttonTap: 46,
+  collectionSelect: 70,
+  comboPop: 95,
+  pigExitGate: 70,
+  pigRunGrass: 92,
+  pigTapSnort: 70,
+};
+
+const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV3Board10x16";
 const FIRECRACKER_POSITION_KEY = "pigEscapeFirecrackerPositionV1";
-const EQUIPPED_SKIN_STORAGE_KEY = "pigEscapeEquippedSkinV2";
-const UNLOCKED_COLLECTION_STORAGE_KEY = "pigEscapeUnlockedCollectionV2";
-const ENABLED_ABILITIES_STORAGE_KEY = "pigEscapeEnabledAbilitiesV2";
-const EQUIPPED_TOOLS_STORAGE_KEY = "pigEscapeEquippedToolsV2";
+const EQUIPPED_SKIN_STORAGE_KEY = "pigEscapeEquippedSkinV3Board10x16";
+const UNLOCKED_COLLECTION_STORAGE_KEY = "pigEscapeUnlockedCollectionV3Board10x16";
+const ENABLED_ABILITIES_STORAGE_KEY = "pigEscapeEnabledAbilitiesV3Board10x16";
+const EQUIPPED_TOOLS_STORAGE_KEY = "pigEscapeEquippedToolsV3Board10x16";
+const AUDIO_ENABLED_STORAGE_KEY = "pigEscapeAudioEnabledV1";
 const DEFAULT_LEVEL_INDEX = 0;
 const MAX_EQUIPPED_TOOLS = 3;
 
-const LEVELS = [
-  {
-    id: 1,
-    name: "第1关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 6, y: 9, dir: "up" },
-      { x: 7, y: 8, dir: "right" },
-      { x: 5, y: 8, dir: "right" },
-      { x: 5, y: 9, dir: "up" },
-      { x: 7, y: 10, dir: "left" },
-      { x: 4, y: 9, dir: "up" },
-      { x: 4, y: 11, dir: "left" },
-      { x: 5, y: 7, dir: "left" },
-      { x: 3, y: 7, dir: "left" },
-      { x: 3, y: 10, dir: "up" },
-      { x: 4, y: 12, dir: "up" },
-      { x: 5, y: 12, dir: "left" },
-      { x: 7, y: 7, dir: "left" },
-      { x: 3, y: 9, dir: "right" },
-      { x: 8, y: 9, dir: "right" },
-      { x: 7, y: 11, dir: "up" },
-      { x: 9, y: 8, dir: "right" },
-      { x: 5, y: 13, dir: "left" },
-      { x: 9, y: 10, dir: "down" },
-      { x: 7, y: 13, dir: "left" },
-      { x: 7, y: 6, dir: "right" },
-      { x: 3, y: 8, dir: "right" },
-      { x: 9, y: 6, dir: "right" },
-      { x: 5, y: 5, dir: "up" },
-      { x: 8, y: 11, dir: "up" },
-      { x: 2, y: 10, dir: "up" },
-      { x: 6, y: 4, dir: "right" },
-      { x: 7, y: 4, dir: "up" },
-      { x: 5, y: 14, dir: "up" },
-      { x: 6, y: 14, dir: "left" },
-    ]
-  },
-  {
-    id: 2,
-    name: "第2关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 6, y: 11, dir: "down" },
-      { x: 4, y: 10, dir: "right" },
-      { x: 3, y: 9, dir: "down" },
-      { x: 1, y: 8, dir: "left" },
-      { x: 1, y: 7, dir: "down" },
-      { x: 5, y: 6, dir: "left" },
-      { x: 5, y: 10, dir: "up" },
-      { x: 4, y: 7, dir: "left" },
-      { x: 8, y: 6, dir: "left" },
-      { x: 3, y: 6, dir: "down" },
-      { x: 8, y: 16, dir: "up" },
-      { x: 7, y: 16, dir: "right" },
-      { x: 7, y: 11, dir: "down" },
-      { x: 6, y: 14, dir: "down" },
-      { x: 7, y: 13, dir: "down" },
-      { x: 8, y: 14, dir: "up" },
-      { x: 6, y: 9, dir: "down" },
-      { x: 4, y: 12, dir: "left" },
-      { x: 8, y: 12, dir: "up" },
-      { x: 8, y: 9, dir: "up" },
-      { x: 8, y: 4, dir: "up" },
-      { x: 3, y: 13, dir: "left" },
-      { x: 8, y: 7, dir: "up" },
-      { x: 5, y: 3, dir: "right" },
-      { x: 9, y: 12, dir: "left" },
-      { x: 9, y: 8, dir: "down" },
-      { x: 4, y: 15, dir: "up" },
-      { x: 5, y: 17, dir: "right" },
-      { x: 7, y: 5, dir: "down" },
-      { x: 3, y: 4, dir: "right" },
-      { x: 4, y: 14, dir: "right" },
-      { x: 5, y: 2, dir: "left" },
-      { x: 2, y: 2, dir: "down" },
-      { x: 9, y: 15, dir: "down" },
-      { x: 8, y: 2, dir: "left" },
-      { x: 10, y: 15, dir: "down" },
-      { x: 3, y: 16, dir: "right" },
-      { x: 2, y: 11, dir: "down" },
-      { x: 2, y: 15, dir: "right" },
-      { x: 9, y: 5, dir: "left" },
-    ]
-  },
-  {
-    id: 3,
-    name: "第3关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 7, y: 10, dir: "right" },
-      { x: 5, y: 10, dir: "right" },
-      { x: 4, y: 13, dir: "up" },
-      { x: 4, y: 15, dir: "up" },
-      { x: 10, y: 9, dir: "up" },
-      { x: 10, y: 4, dir: "up" },
-      { x: 1, y: 16, dir: "right" },
-      { x: 10, y: 3, dir: "right" },
-      { x: 1, y: 6, dir: "down" },
-      { x: 10, y: 6, dir: "left" },
-      { x: 6, y: 6, dir: "left" },
-      { x: 11, y: 4, dir: "down" },
-      { x: 3, y: 6, dir: "left" },
-      { x: 7, y: 4, dir: "right" },
-      { x: 9, y: 9, dir: "up" },
-      { x: 9, y: 7, dir: "up" },
-      { x: 1, y: 13, dir: "down" },
-      { x: 3, y: 16, dir: "right" },
-      { x: 1, y: 10, dir: "down" },
-      { x: 6, y: 5, dir: "right" },
-      { x: 1, y: 15, dir: "down" },
-      { x: 1, y: 8, dir: "down" },
-      { x: 9, y: 5, dir: "right" },
-      { x: 4, y: 5, dir: "right" },
-      { x: 4, y: 11, dir: "up" },
-      { x: 6, y: 8, dir: "up" },
-      { x: 5, y: 8, dir: "up" },
-      { x: 3, y: 9, dir: "right" },
-      { x: 7, y: 11, dir: "left" },
-      { x: 9, y: 11, dir: "up" },
-      { x: 2, y: 8, dir: "down" },
-      { x: 6, y: 15, dir: "right" },
-      { x: 5, y: 17, dir: "left" },
-      { x: 10, y: 1, dir: "up" },
-      { x: 7, y: 16, dir: "right" },
-      { x: 5, y: 13, dir: "up" },
-      { x: 2, y: 3, dir: "down" },
-      { x: 5, y: 3, dir: "right" },
-      { x: 7, y: 12, dir: "right" },
-      { x: 1, y: 3, dir: "right" },
-      { x: 7, y: 13, dir: "up" },
-      { x: 0, y: 13, dir: "up" },
-      { x: 7, y: 2, dir: "left" },
-      { x: 0, y: 4, dir: "up" },
-      { x: 3, y: 2, dir: "left" },
-      { x: 3, y: 11, dir: "up" },
-      { x: 7, y: 7, dir: "left" },
-      { x: 9, y: 13, dir: "right" },
-      { x: 10, y: 11, dir: "up" },
-      { x: 0, y: 8, dir: "up" },
-    ]
-  },
-  {
-    id: 4,
-    name: "第4关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 2, y: 13, dir: "right" },
-      { x: 2, y: 11, dir: "down" },
-      { x: 9, y: 13, dir: "right" },
-      { x: 5, y: 10, dir: "left" },
-      { x: 5, y: 13, dir: "up" },
-      { x: 8, y: 11, dir: "left" },
-      { x: 8, y: 4, dir: "down" },
-      { x: 8, y: 7, dir: "down" },
-      { x: 6, y: 11, dir: "up" },
-      { x: 4, y: 13, dir: "right" },
-      { x: 1, y: 12, dir: "right" },
-      { x: 4, y: 3, dir: "right" },
-      { x: 3, y: 9, dir: "up" },
-      { x: 4, y: 9, dir: "down" },
-      { x: 3, y: 6, dir: "up" },
-      { x: 8, y: 10, dir: "down" },
-      { x: 2, y: 5, dir: "down" },
-      { x: 4, y: 5, dir: "down" },
-      { x: 2, y: 2, dir: "down" },
-      { x: 4, y: 2, dir: "left" },
-      { x: 5, y: 6, dir: "up" },
-      { x: 6, y: 6, dir: "left" },
-      { x: 7, y: 13, dir: "up" },
-      { x: 7, y: 11, dir: "up" },
-      { x: 0, y: 3, dir: "down" },
-      { x: 2, y: 7, dir: "down" },
-      { x: 0, y: 9, dir: "down" },
-      { x: 0, y: 6, dir: "down" },
-      { x: 9, y: 7, dir: "down" },
-      { x: 2, y: 14, dir: "right" },
-      { x: 9, y: 4, dir: "down" },
-      { x: 10, y: 3, dir: "up" },
-      { x: 3, y: 15, dir: "right" },
-      { x: 5, y: 1, dir: "left" },
-      { x: 7, y: 2, dir: "left" },
-      { x: 10, y: 5, dir: "left" },
-      { x: 11, y: 3, dir: "down" },
-      { x: 9, y: 1, dir: "left" },
-      { x: 2, y: 16, dir: "right" },
-      { x: 5, y: 16, dir: "up" },
-      { x: 10, y: 7, dir: "up" },
-      { x: 10, y: 14, dir: "up" },
-      { x: 10, y: 9, dir: "up" },
-      { x: 9, y: 15, dir: "right" },
-      { x: 9, y: 16, dir: "right" },
-      { x: 11, y: 12, dir: "down" },
-      { x: 1, y: 2, dir: "down" },
-      { x: 9, y: 17, dir: "left" },
-      { x: 3, y: 17, dir: "up" },
-      { x: 8, y: 18, dir: "left" },
-      { x: 0, y: 16, dir: "down" },
-      { x: 4, y: 18, dir: "left" },
-      { x: 11, y: 8, dir: "down" },
-      { x: 4, y: 0, dir: "left" },
-      { x: 1, y: 8, dir: "down" },
-      { x: 6, y: 17, dir: "up" },
-      { x: 8, y: 0, dir: "left" },
-      { x: 6, y: 5, dir: "left" },
-      { x: 11, y: 15, dir: "down" },
-      { x: 0, y: 11, dir: "down" },
-    ]
-  },
-  {
-    id: 5,
-    name: "第5关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 5, y: 14, dir: "down" },
-      { x: 5, y: 11, dir: "down" },
-      { x: 3, y: 10, dir: "right" },
-      { x: 5, y: 18, dir: "down" },
-      { x: 3, y: 12, dir: "up" },
-      { x: 2, y: 13, dir: "right" },
-      { x: 2, y: 15, dir: "up" },
-      { x: 3, y: 16, dir: "up" },
-      { x: 4, y: 16, dir: "left" },
-      { x: 9, y: 15, dir: "left" },
-      { x: 6, y: 15, dir: "left" },
-      { x: 10, y: 7, dir: "down" },
-      { x: 5, y: 7, dir: "right" },
-      { x: 5, y: 2, dir: "down" },
-      { x: 4, y: 10, dir: "up" },
-      { x: 9, y: 7, dir: "right" },
-      { x: 8, y: 14, dir: "left" },
-      { x: 10, y: 14, dir: "down" },
-      { x: 9, y: 11, dir: "left" },
-      { x: 7, y: 11, dir: "left" },
-      { x: 6, y: 10, dir: "down" },
-      { x: 10, y: 10, dir: "down" },
-      { x: 3, y: 9, dir: "right" },
-      { x: 6, y: 2, dir: "down" },
-      { x: 8, y: 2, dir: "down" },
-      { x: 1, y: 16, dir: "up" },
-      { x: 7, y: 4, dir: "down" },
-      { x: 6, y: 6, dir: "right" },
-      { x: 9, y: 5, dir: "down" },
-      { x: 6, y: 5, dir: "right" },
-      { x: 9, y: 2, dir: "down" },
-      { x: 7, y: 13, dir: "right" },
-      { x: 9, y: 16, dir: "left" },
-      { x: 10, y: 3, dir: "down" },
-      { x: 4, y: 4, dir: "right" },
-      { x: 7, y: 9, dir: "down" },
-      { x: 1, y: 12, dir: "right" },
-      { x: 3, y: 5, dir: "right" },
-      { x: 0, y: 10, dir: "down" },
-      { x: 9, y: 17, dir: "left" },
-      { x: 0, y: 6, dir: "down" },
-      { x: 3, y: 3, dir: "right" },
-      { x: 2, y: 7, dir: "right" },
-      { x: 11, y: 14, dir: "down" },
-      { x: 3, y: 1, dir: "right" },
-      { x: 0, y: 4, dir: "down" },
-      { x: 1, y: 8, dir: "right" },
-      { x: 1, y: 2, dir: "right" },
-      { x: 11, y: 3, dir: "down" },
-      { x: 3, y: 15, dir: "left" },
-      { x: 7, y: 18, dir: "right" },
-      { x: 11, y: 10, dir: "down" },
-      { x: 3, y: 0, dir: "right" },
-      { x: 0, y: 16, dir: "down" },
-      { x: 11, y: 5, dir: "down" },
-      { x: 5, y: 0, dir: "right" },
-      { x: 3, y: 18, dir: "right" },
-      { x: 7, y: 1, dir: "down" },
-      { x: 11, y: 12, dir: "right" },
-      { x: 11, y: 7, dir: "down" },
-      { x: 8, y: 12, dir: "right" },
-      { x: 6, y: 8, dir: "down" },
-      { x: 11, y: 16, dir: "down" },
-      { x: 3, y: 7, dir: "up" },
-      { x: 7, y: 17, dir: "left" },
-      { x: 0, y: 11, dir: "left" },
-      { x: 8, y: 4, dir: "down" },
-      { x: 2, y: 4, dir: "right" },
-      { x: 9, y: 18, dir: "right" },
-      { x: 4, y: 2, dir: "up" },
-    ]
-  },
-  {
-    id: 6,
-    name: "第6关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 6, y: 7, dir: "left" },
-      { x: 6, y: 11, dir: "up" },
-      { x: 6, y: 16, dir: "up" },
-      { x: 4, y: 16, dir: "right" },
-      { x: 2, y: 7, dir: "up" },
-      { x: 3, y: 5, dir: "right" },
-      { x: 7, y: 6, dir: "down" },
-      { x: 4, y: 8, dir: "down" },
-      { x: 2, y: 15, dir: "up" },
-      { x: 3, y: 15, dir: "left" },
-      { x: 4, y: 13, dir: "down" },
-      { x: 2, y: 12, dir: "up" },
-      { x: 6, y: 8, dir: "up" },
-      { x: 3, y: 7, dir: "up" },
-      { x: 3, y: 17, dir: "right" },
-      { x: 4, y: 10, dir: "down" },
-      { x: 6, y: 5, dir: "right" },
-      { x: 7, y: 10, dir: "left" },
-      { x: 9, y: 6, dir: "left" },
-      { x: 8, y: 13, dir: "up" },
-      { x: 8, y: 17, dir: "up" },
-      { x: 7, y: 15, dir: "left" },
-      { x: 9, y: 9, dir: "up" },
-      { x: 10, y: 14, dir: "left" },
-      { x: 6, y: 18, dir: "right" },
-      { x: 6, y: 13, dir: "right" },
-      { x: 7, y: 11, dir: "left" },
-      { x: 9, y: 15, dir: "up" },
-      { x: 3, y: 18, dir: "right" },
-      { x: 10, y: 11, dir: "left" },
-      { x: 10, y: 3, dir: "down" },
-      { x: 7, y: 3, dir: "right" },
-      { x: 5, y: 2, dir: "right" },
-      { x: 4, y: 3, dir: "right" },
-      { x: 10, y: 9, dir: "down" },
-      { x: 11, y: 7, dir: "down" },
-      { x: 7, y: 2, dir: "right" },
-      { x: 2, y: 2, dir: "right" },
-      { x: 1, y: 7, dir: "up" },
-      { x: 0, y: 9, dir: "left" },
-      { x: 11, y: 4, dir: "down" },
-      { x: 1, y: 11, dir: "up" },
-      { x: 4, y: 1, dir: "down" },
-      { x: 11, y: 13, dir: "down" },
-      { x: 2, y: 4, dir: "right" },
-      { x: 7, y: 1, dir: "left" },
-      { x: 1, y: 16, dir: "up" },
-      { x: 0, y: 14, dir: "up" },
-      { x: 0, y: 4, dir: "up" },
-      { x: 8, y: 0, dir: "left" },
-      { x: 3, y: 0, dir: "up" },
-      { x: 1, y: 13, dir: "right" },
-      { x: 9, y: 4, dir: "up" },
-      { x: 0, y: 11, dir: "up" },
-      { x: 10, y: 17, dir: "right" },
-      { x: 10, y: 15, dir: "left" },
-      { x: 1, y: 14, dir: "left" },
-      { x: 6, y: 0, dir: "left" },
-      { x: 0, y: 2, dir: "up" },
-      { x: 2, y: 0, dir: "up" },
-      { x: 5, y: 11, dir: "down" },
-      { x: 9, y: 1, dir: "left" },
-      { x: 10, y: 13, dir: "down" },
-      { x: 0, y: 6, dir: "up" },
-      { x: 11, y: 10, dir: "down" },
-      { x: 7, y: 4, dir: "right" },
-      { x: 10, y: 5, dir: "down" },
-      { x: 8, y: 8, dir: "up" },
-      { x: 3, y: 10, dir: "up" },
-      { x: 7, y: 18, dir: "down" },
-    ]
-  },
-  {
-    id: 7,
-    name: "第7关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 0, y: 10, dir: "up" },
-      { x: 2, y: 10, dir: "left" },
-      { x: 0, y: 4, dir: "left" },
-      { x: 2, y: 12, dir: "up" },
-      { x: 0, y: 13, dir: "up" },
-      { x: 9, y: 13, dir: "left" },
-      { x: 0, y: 5, dir: "up" },
-      { x: 9, y: 17, dir: "up" },
-      { x: 2, y: 14, dir: "left" },
-      { x: 10, y: 16, dir: "up" },
-      { x: 6, y: 17, dir: "right" },
-      { x: 9, y: 14, dir: "left" },
-      { x: 5, y: 14, dir: "left" },
-      { x: 9, y: 16, dir: "right" },
-      { x: 5, y: 16, dir: "right" },
-      { x: 3, y: 17, dir: "right" },
-      { x: 4, y: 13, dir: "left" },
-      { x: 4, y: 10, dir: "down" },
-      { x: 6, y: 10, dir: "left" },
-      { x: 7, y: 18, dir: "right" },
-      { x: 9, y: 10, dir: "left" },
-      { x: 6, y: 9, dir: "left" },
-      { x: 8, y: 9, dir: "down" },
-      { x: 5, y: 8, dir: "down" },
-      { x: 7, y: 13, dir: "up" },
-      { x: 1, y: 8, dir: "right" },
-      { x: 3, y: 18, dir: "right" },
-      { x: 8, y: 7, dir: "left" },
-      { x: 4, y: 8, dir: "right" },
-      { x: 6, y: 7, dir: "down" },
-      { x: 2, y: 5, dir: "left" },
-      { x: 10, y: 11, dir: "up" },
-      { x: 10, y: 6, dir: "left" },
-      { x: 11, y: 10, dir: "up" },
-      { x: 4, y: 4, dir: "left" },
-      { x: 1, y: 16, dir: "up" },
-      { x: 8, y: 5, dir: "down" },
-      { x: 7, y: 12, dir: "right" },
-      { x: 6, y: 1, dir: "down" },
-      { x: 11, y: 15, dir: "up" },
-      { x: 6, y: 4, dir: "down" },
-      { x: 1, y: 15, dir: "right" },
-      { x: 1, y: 3, dir: "right" },
-      { x: 3, y: 1, dir: "right" },
-      { x: 6, y: 11, dir: "right" },
-      { x: 9, y: 3, dir: "up" },
-      { x: 10, y: 9, dir: "left" },
-      { x: 7, y: 0, dir: "left" },
-      { x: 10, y: 5, dir: "left" },
-      { x: 1, y: 6, dir: "up" },
-      { x: 9, y: 2, dir: "left" },
-      { x: 11, y: 2, dir: "up" },
-      { x: 3, y: 2, dir: "left" },
-      { x: 7, y: 1, dir: "up" },
-      { x: 3, y: 13, dir: "down" },
-      { x: 1, y: 1, dir: "up" },
-      { x: 11, y: 12, dir: "up" },
-      { x: 3, y: 0, dir: "left" },
-      { x: 1, y: 9, dir: "left" },
-      { x: 6, y: 15, dir: "right" },
-      { x: 10, y: 7, dir: "left" },
-      { x: 4, y: 6, dir: "down" },
-      { x: 7, y: 7, dir: "up" },
-      { x: 1, y: 12, dir: "up" },
-      { x: 7, y: 4, dir: "up" },
-      { x: 2, y: 6, dir: "left" },
-      { x: 8, y: 2, dir: "down" },
-      { x: 9, y: 0, dir: "up" },
-      { x: 9, y: 8, dir: "up" },
-      { x: 9, y: 15, dir: "right" },
-    ]
-  },
-  {
-    id: 8,
-    name: "第8关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 6, y: 9, dir: "right" },
-      { x: 5, y: 11, dir: "up" },
-      { x: 7, y: 10, dir: "down" },
-      { x: 7, y: 12, dir: "right" },
-      { x: 5, y: 17, dir: "up" },
-      { x: 11, y: 13, dir: "down" },
-      { x: 7, y: 18, dir: "left" },
-      { x: 8, y: 13, dir: "down" },
-      { x: 8, y: 16, dir: "down" },
-      { x: 5, y: 13, dir: "up" },
-      { x: 10, y: 16, dir: "left" },
-      { x: 11, y: 10, dir: "down" },
-      { x: 3, y: 11, dir: "right" },
-      { x: 10, y: 12, dir: "down" },
-      { x: 9, y: 9, dir: "right" },
-      { x: 10, y: 15, dir: "left" },
-      { x: 9, y: 17, dir: "up" },
-      { x: 7, y: 6, dir: "down" },
-      { x: 10, y: 8, dir: "down" },
-      { x: 5, y: 8, dir: "right" },
-      { x: 3, y: 9, dir: "down" },
-      { x: 1, y: 8, dir: "right" },
-      { x: 4, y: 11, dir: "up" },
-      { x: 1, y: 13, dir: "up" },
-      { x: 5, y: 7, dir: "right" },
-      { x: 4, y: 15, dir: "up" },
-      { x: 0, y: 11, dir: "up" },
-      { x: 2, y: 7, dir: "right" },
-      { x: 3, y: 6, dir: "down" },
-      { x: 6, y: 6, dir: "down" },
-      { x: 3, y: 3, dir: "down" },
-      { x: 1, y: 2, dir: "right" },
-      { x: 5, y: 3, dir: "left" },
-      { x: 10, y: 3, dir: "left" },
-      { x: 2, y: 13, dir: "up" },
-      { x: 3, y: 17, dir: "right" },
-      { x: 1, y: 9, dir: "right" },
-      { x: 6, y: 1, dir: "down" },
-      { x: 1, y: 6, dir: "right" },
-      { x: 9, y: 1, dir: "left" },
-      { x: 11, y: 5, dir: "down" },
-      { x: 3, y: 0, dir: "right" },
-      { x: 9, y: 4, dir: "up" },
-      { x: 1, y: 4, dir: "right" },
-      { x: 0, y: 16, dir: "left" },
-      { x: 3, y: 18, dir: "left" },
-      { x: 0, y: 14, dir: "up" },
-      { x: 7, y: 4, dir: "right" },
-      { x: 5, y: 1, dir: "up" },
-      { x: 8, y: 0, dir: "right" },
-      { x: 6, y: 15, dir: "left" },
-      { x: 8, y: 8, dir: "down" },
-      { x: 1, y: 5, dir: "right" },
-      { x: 8, y: 14, dir: "left" },
-      { x: 11, y: 7, dir: "down" },
-      { x: 9, y: 7, dir: "up" },
-      { x: 8, y: 3, dir: "down" },
-      { x: 2, y: 10, dir: "right" },
-      { x: 7, y: 17, dir: "right" },
-      { x: 3, y: 16, dir: "down" },
-      { x: 2, y: 1, dir: "up" },
-      { x: 6, y: 14, dir: "down" },
-      { x: 3, y: 14, dir: "left" },
-      { x: 9, y: 10, dir: "right" },
-      { x: 10, y: 5, dir: "down" },
-      { x: 0, y: 3, dir: "left" },
-      { x: 7, y: 3, dir: "down" },
-      { x: 10, y: 13, dir: "right" },
-      { x: 4, y: 9, dir: "up" },
-      { x: 5, y: 4, dir: "up" },
-    ]
-  },
-  {
-    id: 9,
-    name: "第9关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 3, y: 8, dir: "left" },
-      { x: 1, y: 9, dir: "down" },
-      { x: 4, y: 15, dir: "up" },
-      { x: 1, y: 12, dir: "down" },
-      { x: 1, y: 15, dir: "right" },
-      { x: 2, y: 9, dir: "left" },
-      { x: 3, y: 14, dir: "up" },
-      { x: 1, y: 14, dir: "right" },
-      { x: 7, y: 8, dir: "left" },
-      { x: 7, y: 4, dir: "down" },
-      { x: 4, y: 12, dir: "up" },
-      { x: 0, y: 9, dir: "down" },
-      { x: 3, y: 12, dir: "right" },
-      { x: 5, y: 9, dir: "left" },
-      { x: 5, y: 13, dir: "up" },
-      { x: 5, y: 3, dir: "right" },
-      { x: 8, y: 9, dir: "left" },
-      { x: 6, y: 13, dir: "up" },
-      { x: 5, y: 16, dir: "up" },
-      { x: 8, y: 6, dir: "down" },
-      { x: 5, y: 4, dir: "right" },
-      { x: 8, y: 11, dir: "left" },
-      { x: 3, y: 17, dir: "right" },
-      { x: 9, y: 5, dir: "down" },
-      { x: 10, y: 8, dir: "left" },
-      { x: 10, y: 6, dir: "left" },
-      { x: 5, y: 10, dir: "up" },
-      { x: 8, y: 3, dir: "down" },
-      { x: 5, y: 6, dir: "up" },
-      { x: 4, y: 5, dir: "right" },
-      { x: 11, y: 3, dir: "down" },
-      { x: 8, y: 13, dir: "left" },
-      { x: 10, y: 7, dir: "left" },
-      { x: 9, y: 2, dir: "down" },
-      { x: 10, y: 10, dir: "left" },
-      { x: 0, y: 6, dir: "down" },
-      { x: 7, y: 1, dir: "right" },
-      { x: 2, y: 4, dir: "right" },
-      { x: 5, y: 2, dir: "right" },
-      { x: 6, y: 16, dir: "up" },
-      { x: 2, y: 7, dir: "up" },
-      { x: 6, y: 4, dir: "up" },
-      { x: 2, y: 1, dir: "right" },
-      { x: 8, y: 16, dir: "left" },
-      { x: 2, y: 2, dir: "right" },
-      { x: 10, y: 12, dir: "up" },
-      { x: 10, y: 15, dir: "right" },
-      { x: 0, y: 13, dir: "down" },
-      { x: 0, y: 4, dir: "down" },
-      { x: 10, y: 16, dir: "left" },
-      { x: 11, y: 12, dir: "down" },
-      { x: 7, y: 18, dir: "right" },
-      { x: 6, y: 0, dir: "right" },
-      { x: 7, y: 12, dir: "right" },
-      { x: 11, y: 14, dir: "down" },
-      { x: 9, y: 0, dir: "right" },
-      { x: 4, y: 18, dir: "right" },
-      { x: 1, y: 17, dir: "down" },
-      { x: 7, y: 7, dir: "left" },
-      { x: 10, y: 1, dir: "up" },
-      { x: 2, y: 11, dir: "left" },
-      { x: 9, y: 18, dir: "right" },
-      { x: 1, y: 6, dir: "down" },
-      { x: 10, y: 17, dir: "right" },
-      { x: 6, y: 10, dir: "up" },
-      { x: 5, y: 1, dir: "right" },
-      { x: 7, y: 14, dir: "down" },
-      { x: 4, y: 0, dir: "right" },
-      { x: 3, y: 6, dir: "left" },
-      { x: 11, y: 5, dir: "down" },
-      { x: 1, y: 13, dir: "left" },
-      { x: 0, y: 11, dir: "down" },
-      { x: 9, y: 12, dir: "right" },
-      { x: 10, y: 9, dir: "left" },
-      { x: 3, y: 7, dir: "left" },
-      { x: 6, y: 6, dir: "left" },
-      { x: 8, y: 17, dir: "right" },
-      { x: 10, y: 14, dir: "right" },
-      { x: 2, y: 3, dir: "right" },
-      { x: 4, y: 10, dir: "up" },
-    ]
-  },
-  {
-    id: 10,
-    name: "第10关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 7, y: 5, dir: "left" },
-      { x: 7, y: 13, dir: "up" },
-      { x: 1, y: 5, dir: "left" },
-      { x: 4, y: 14, dir: "right" },
-      { x: 4, y: 5, dir: "left" },
-      { x: 8, y: 3, dir: "down" },
-      { x: 4, y: 7, dir: "down" },
-      { x: 3, y: 5, dir: "down" },
-      { x: 7, y: 6, dir: "left" },
-      { x: 2, y: 2, dir: "right" },
-      { x: 2, y: 3, dir: "right" },
-      { x: 7, y: 9, dir: "up" },
-      { x: 3, y: 10, dir: "down" },
-      { x: 6, y: 3, dir: "right" },
-      { x: 5, y: 8, dir: "up" },
-      { x: 5, y: 10, dir: "right" },
-      { x: 6, y: 10, dir: "up" },
-      { x: 5, y: 16, dir: "up" },
-      { x: 6, y: 2, dir: "right" },
-      { x: 1, y: 9, dir: "right" },
-      { x: 9, y: 11, dir: "left" },
-      { x: 9, y: 6, dir: "down" },
-      { x: 0, y: 3, dir: "down" },
-      { x: 8, y: 8, dir: "left" },
-      { x: 1, y: 11, dir: "up" },
-      { x: 10, y: 4, dir: "down" },
-      { x: 10, y: 8, dir: "down" },
-      { x: 4, y: 12, dir: "left" },
-      { x: 1, y: 7, dir: "left" },
-      { x: 6, y: 15, dir: "up" },
-      { x: 11, y: 7, dir: "up" },
-      { x: 9, y: 13, dir: "left" },
-      { x: 9, y: 15, dir: "right" },
-      { x: 1, y: 14, dir: "right" },
-      { x: 10, y: 12, dir: "left" },
-      { x: 4, y: 1, dir: "down" },
-      { x: 6, y: 0, dir: "up" },
-      { x: 2, y: 15, dir: "right" },
-      { x: 11, y: 3, dir: "up" },
-      { x: 1, y: 16, dir: "right" },
-      { x: 3, y: 17, dir: "right" },
-      { x: 8, y: 1, dir: "down" },
-      { x: 0, y: 13, dir: "down" },
-      { x: 3, y: 1, dir: "down" },
-      { x: 7, y: 17, dir: "up" },
-      { x: 3, y: 13, dir: "left" },
-      { x: 3, y: 18, dir: "left" },
-      { x: 11, y: 15, dir: "up" },
-      { x: 10, y: 16, dir: "right" },
-      { x: 8, y: 18, dir: "down" },
-      { x: 8, y: 14, dir: "down" },
-      { x: 1, y: 8, dir: "left" },
-      { x: 6, y: 7, dir: "up" },
-      { x: 9, y: 2, dir: "down" },
-      { x: 11, y: 9, dir: "up" },
-      { x: 5, y: 18, dir: "left" },
-      { x: 2, y: 1, dir: "right" },
-      { x: 2, y: 12, dir: "down" },
-      { x: 0, y: 6, dir: "down" },
-      { x: 5, y: 4, dir: "right" },
-      { x: 9, y: 9, dir: "right" },
-      { x: 0, y: 11, dir: "down" },
-      { x: 11, y: 2, dir: "right" },
-      { x: 3, y: 16, dir: "right" },
-      { x: 7, y: 0, dir: "up" },
-      { x: 10, y: 6, dir: "left" },
-      { x: 10, y: 10, dir: "right" },
-      { x: 7, y: 11, dir: "up" },
-      { x: 3, y: 8, dir: "down" },
-      { x: 10, y: 17, dir: "right" },
-      { x: 10, y: 15, dir: "down" },
-      { x: 10, y: 5, dir: "left" },
-      { x: 4, y: 9, dir: "down" },
-      { x: 2, y: 6, dir: "left" },
-      { x: 1, y: 4, dir: "right" },
-      { x: 5, y: 0, dir: "up" },
-      { x: 7, y: 7, dir: "up" },
-      { x: 3, y: 12, dir: "down" },
-      { x: 11, y: 13, dir: "up" },
-      { x: 5, y: 15, dir: "right" },
-    ]
-  },
-    {
-    id: 11,
-    name: "第11关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 8, y: 7, dir: "right" },
-      { x: 8, y: 14, dir: "up" },
-      { x: 9, y: 6, dir: "up" },
-      { x: 5, y: 14, dir: "right" },
-      { x: 5, y: 17, dir: "up" },
-      { x: 9, y: 5, dir: "right" },
-      { x: 8, y: 18, dir: "left" },
-      { x: 10, y: 13, dir: "left" },
-      { x: 8, y: 8, dir: "up" },
-      { x: 11, y: 6, dir: "down" },
-      { x: 11, y: 8, dir: "down" },
-      { x: 4, y: 16, dir: "up" },
-      { x: 6, y: 16, dir: "left" },
-      { x: 6, y: 8, dir: "down" },
-      { x: 11, y: 10, dir: "down" },
-      { x: 7, y: 17, dir: "left" },
-      { x: 8, y: 10, dir: "up" },
-      { x: 6, y: 10, dir: "down" },
-      { x: 2, y: 7, dir: "right" },
-      { x: 2, y: 4, dir: "down" },
-      { x: 3, y: 8, dir: "right" },
-      { x: 2, y: 1, dir: "down" },
-      { x: 7, y: 13, dir: "up" },
-      { x: 8, y: 4, dir: "left" },
-      { x: 2, y: 9, dir: "right" },
-      { x: 4, y: 0, dir: "left" },
-      { x: 5, y: 8, dir: "up" },
-      { x: 9, y: 16, dir: "left" },
-      { x: 3, y: 11, dir: "up" },
-      { x: 6, y: 3, dir: "left" },
-      { x: 9, y: 12, dir: "left" },
-      { x: 10, y: 5, dir: "down" },
-      { x: 1, y: 5, dir: "down" },
-      { x: 5, y: 2, dir: "up" },
-      { x: 4, y: 12, dir: "left" },
-      { x: 4, y: 4, dir: "up" },
-      { x: 2, y: 13, dir: "left" },
-      { x: 7, y: 2, dir: "left" },
-      { x: 10, y: 9, dir: "down" },
-      { x: 11, y: 4, dir: "down" },
-      { x: 1, y: 12, dir: "left" },
-      { x: 1, y: 11, dir: "right" },
-      { x: 2, y: 16, dir: "left" },
-      { x: 0, y: 9, dir: "down" },
-      { x: 1, y: 2, dir: "down" },
-      { x: 5, y: 5, dir: "up" },
-      { x: 11, y: 15, dir: "right" },
-      { x: 7, y: 0, dir: "up" },
-      { x: 9, y: 1, dir: "left" },
-      { x: 0, y: 3, dir: "down" },
-      { x: 1, y: 15, dir: "down" },
-      { x: 7, y: 10, dir: "up" },
-      { x: 2, y: 2, dir: "left" },
-      { x: 0, y: 14, dir: "down" },
-      { x: 2, y: 18, dir: "down" },
-      { x: 0, y: 6, dir: "down" },
-      { x: 3, y: 6, dir: "left" },
-      { x: 3, y: 17, dir: "up" },
-      { x: 1, y: 10, dir: "right" },
-      { x: 10, y: 2, dir: "left" },
-      { x: 11, y: 12, dir: "down" },
-      { x: 5, y: 1, dir: "left" },
-      { x: 9, y: 17, dir: "left" },
-      { x: 1, y: 17, dir: "down" },
-      { x: 0, y: 16, dir: "down" },
-      { x: 4, y: 13, dir: "left" },
-      { x: 5, y: 11, dir: "right" },
-      { x: 9, y: 10, dir: "up" },
-      { x: 8, y: 0, dir: "up" },
-      { x: 11, y: 14, dir: "right" },
-      { x: 3, y: 4, dir: "up" },
-      { x: 7, y: 5, dir: "right" },
-      { x: 10, y: 7, dir: "down" },
-      { x: 10, y: 11, dir: "down" },
-      { x: 7, y: 6, dir: "left" },
-      { x: 3, y: 1, dir: "left" },
-      { x: 4, y: 9, dir: "right" },
-      { x: 5, y: 10, dir: "right" },
-      { x: 4, y: 7, dir: "right" },
-    ]
-  },
-  {
-    id: 12,
-    name: "第12关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 6, y: 9, dir: "up" },
-      { x: 6, y: 7, dir: "left" },
-      { x: 4, y: 10, dir: "right" },
-      { x: 3, y: 7, dir: "down" },
-      { x: 7, y: 9, dir: "up" },
-      { x: 2, y: 9, dir: "right" },
-      { x: 1, y: 3, dir: "down" },
-      { x: 2, y: 13, dir: "up" },
-      { x: 5, y: 13, dir: "left" },
-      { x: 10, y: 13, dir: "left" },
-      { x: 6, y: 14, dir: "left" },
-      { x: 5, y: 8, dir: "down" },
-      { x: 5, y: 12, dir: "down" },
-      { x: 1, y: 11, dir: "right" },
-      { x: 1, y: 8, dir: "right" },
-      { x: 3, y: 4, dir: "down" },
-      { x: 4, y: 6, dir: "up" },
-      { x: 1, y: 4, dir: "right" },
-      { x: 9, y: 12, dir: "right" },
-      { x: 6, y: 15, dir: "left" },
-      { x: 0, y: 15, dir: "up" },
-      { x: 6, y: 5, dir: "right" },
-      { x: 4, y: 3, dir: "up" },
-      { x: 10, y: 11, dir: "down" },
-      { x: 3, y: 2, dir: "left" },
-      { x: 8, y: 6, dir: "left" },
-      { x: 9, y: 8, dir: "up" },
-      { x: 1, y: 5, dir: "right" },
-      { x: 4, y: 14, dir: "up" },
-      { x: 5, y: 17, dir: "down" },
-      { x: 6, y: 17, dir: "up" },
-      { x: 10, y: 7, dir: "down" },
-      { x: 8, y: 5, dir: "down" },
-      { x: 7, y: 17, dir: "up" },
-      { x: 5, y: 1, dir: "down" },
-      { x: 9, y: 15, dir: "left" },
-      { x: 4, y: 17, dir: "up" },
-      { x: 7, y: 3, dir: "left" },
-      { x: 9, y: 17, dir: "up" },
-      { x: 1, y: 16, dir: "down" },
-      { x: 11, y: 5, dir: "down" },
-      { x: 2, y: 1, dir: "right" },
-      { x: 7, y: 0, dir: "up" },
-      { x: 4, y: 8, dir: "up" },
-      { x: 1, y: 12, dir: "right" },
-      { x: 8, y: 1, dir: "down" },
-      { x: 9, y: 2, dir: "left" },
-      { x: 2, y: 17, dir: "up" },
-      { x: 11, y: 16, dir: "right" },
-      { x: 10, y: 1, dir: "right" },
-      { x: 11, y: 9, dir: "down" },
-      { x: 11, y: 15, dir: "down" },
-      { x: 6, y: 0, dir: "up" },
-      { x: 10, y: 5, dir: "right" },
-      { x: 11, y: 11, dir: "down" },
-      { x: 2, y: 10, dir: "up" },
-      { x: 2, y: 6, dir: "up" },
-      { x: 8, y: 13, dir: "left" },
-      { x: 0, y: 9, dir: "up" },
-      { x: 3, y: 15, dir: "down" },
-      { x: 7, y: 4, dir: "right" },
-      { x: 8, y: 10, dir: "down" },
-      { x: 10, y: 3, dir: "left" },
-      { x: 4, y: 0, dir: "right" },
-      { x: 4, y: 12, dir: "right" },
-      { x: 5, y: 4, dir: "down" },
-      { x: 0, y: 13, dir: "up" },
-      { x: 7, y: 11, dir: "right" },
-      { x: 1, y: 7, dir: "down" },
-      { x: 0, y: 6, dir: "up" },
-      { x: 3, y: 18, dir: "down" },
-      { x: 8, y: 14, dir: "left" },
-      { x: 3, y: 13, dir: "left" },
-      { x: 8, y: 8, dir: "down" },
-      { x: 6, y: 6, dir: "left" },
-      { x: 8, y: 18, dir: "down" },
-      { x: 10, y: 4, dir: "right" },
-      { x: 9, y: 10, dir: "up" },
-      { x: 0, y: 2, dir: "up" },
-      { x: 7, y: 16, dir: "right" },
-    ]
-  },
-  {
-    id: 13,
-    name: "第13关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 1, y: 14, dir: "down" },
-      { x: 1, y: 2, dir: "down" },
-      { x: 7, y: 1, dir: "left" },
-      { x: 1, y: 10, dir: "down" },
-      { x: 1, y: 16, dir: "right" },
-      { x: 3, y: 1, dir: "left" },
-      { x: 8, y: 15, dir: "up" },
-      { x: 0, y: 3, dir: "down" },
-      { x: 8, y: 6, dir: "up" },
-      { x: 8, y: 9, dir: "up" },
-      { x: 6, y: 16, dir: "right" },
-      { x: 0, y: 13, dir: "down" },
-      { x: 1, y: 5, dir: "down" },
-      { x: 8, y: 3, dir: "up" },
-      { x: 6, y: 2, dir: "left" },
-      { x: 3, y: 16, dir: "right" },
-      { x: 1, y: 8, dir: "down" },
-      { x: 0, y: 6, dir: "down" },
-      { x: 1, y: 12, dir: "left" },
-      { x: 8, y: 11, dir: "up" },
-      { x: 6, y: 5, dir: "up" },
-      { x: 5, y: 3, dir: "left" },
-      { x: 3, y: 4, dir: "left" },
-      { x: 3, y: 9, dir: "right" },
-      { x: 3, y: 7, dir: "left" },
-      { x: 7, y: 8, dir: "up" },
-      { x: 5, y: 10, dir: "left" },
-      { x: 2, y: 14, dir: "up" },
-      { x: 0, y: 9, dir: "down" },
-      { x: 5, y: 6, dir: "right" },
-      { x: 6, y: 12, dir: "up" },
-      { x: 10, y: 5, dir: "left" },
-      { x: 2, y: 6, dir: "right" },
-      { x: 4, y: 15, dir: "left" },
-      { x: 10, y: 3, dir: "down" },
-      { x: 8, y: 0, dir: "right" },
-      { x: 11, y: 9, dir: "up" },
-      { x: 4, y: 11, dir: "right" },
-      { x: 7, y: 14, dir: "up" },
-      { x: 5, y: 0, dir: "right" },
-      { x: 2, y: 3, dir: "left" },
-      { x: 9, y: 6, dir: "up" },
-      { x: 7, y: 17, dir: "left" },
-      { x: 10, y: 13, dir: "left" },
-      { x: 9, y: 16, dir: "up" },
-      { x: 4, y: 18, dir: "right" },
-      { x: 10, y: 14, dir: "left" },
-      { x: 9, y: 1, dir: "left" },
-      { x: 11, y: 6, dir: "up" },
-      { x: 9, y: 18, dir: "right" },
-      { x: 4, y: 12, dir: "left" },
-      { x: 10, y: 15, dir: "left" },
-      { x: 10, y: 9, dir: "down" },
-      { x: 9, y: 11, dir: "up" },
-      { x: 3, y: 17, dir: "left" },
-      { x: 11, y: 11, dir: "up" },
-      { x: 0, y: 15, dir: "down" },
-      { x: 10, y: 4, dir: "left" },
-      { x: 4, y: 13, dir: "left" },
-      { x: 2, y: 10, dir: "up" },
-      { x: 5, y: 8, dir: "right" },
-      { x: 7, y: 3, dir: "up" },
-      { x: 7, y: 13, dir: "left" },
-      { x: 11, y: 2, dir: "up" },
-      { x: 10, y: 17, dir: "down" },
-      { x: 1, y: 17, dir: "left" },
-      { x: 5, y: 18, dir: "down" },
-      { x: 6, y: 17, dir: "up" },
-      { x: 10, y: 12, dir: "down" },
-      { x: 3, y: 0, dir: "right" },
-      { x: 2, y: 4, dir: "up" },
-      { x: 5, y: 1, dir: "left" },
-      { x: 3, y: 2, dir: "left" },
-      { x: 8, y: 14, dir: "left" },
-      { x: 0, y: 11, dir: "down" },
-      { x: 4, y: 5, dir: "left" },
-      { x: 9, y: 8, dir: "up" },
-      { x: 3, y: 14, dir: "up" },
-      { x: 10, y: 7, dir: "down" },
-      { x: 5, y: 7, dir: "left" },
-    ]
-  },
-  {
-    id: 14,
-    name: "第14关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 5, y: 10, dir: "right" },
-      { x: 2, y: 6, dir: "up" },
-      { x: 9, y: 8, dir: "down" },
-      { x: 4, y: 5, dir: "down" },
-      { x: 4, y: 8, dir: "left" },
-      { x: 5, y: 7, dir: "down" },
-      { x: 8, y: 14, dir: "right" },
-      { x: 3, y: 11, dir: "up" },
-      { x: 4, y: 12, dir: "left" },
-      { x: 6, y: 13, dir: "left" },
-      { x: 6, y: 9, dir: "right" },
-      { x: 1, y: 12, dir: "down" },
-      { x: 7, y: 11, dir: "right" },
-      { x: 11, y: 11, dir: "down" },
-      { x: 9, y: 9, dir: "right" },
-      { x: 4, y: 9, dir: "right" },
-      { x: 2, y: 13, dir: "up" },
-      { x: 5, y: 11, dir: "right" },
-      { x: 6, y: 12, dir: "left" },
-      { x: 10, y: 11, dir: "right" },
-      { x: 10, y: 13, dir: "down" },
-      { x: 7, y: 8, dir: "left" },
-      { x: 6, y: 8, dir: "down" },
-      { x: 8, y: 13, dir: "left" },
-      { x: 2, y: 10, dir: "right" },
-      { x: 3, y: 13, dir: "left" },
-      { x: 9, y: 10, dir: "right" },
-      { x: 10, y: 10, dir: "down" },
-      { x: 7, y: 3, dir: "left" },
-      { x: 1, y: 9, dir: "right" },
-      { x: 6, y: 4, dir: "right" },
-      { x: 4, y: 3, dir: "left" },
-      { x: 8, y: 4, dir: "up" },
-      { x: 3, y: 3, dir: "up" },
-      { x: 9, y: 6, dir: "down" },
-      { x: 2, y: 8, dir: "left" },
-      { x: 0, y: 7, dir: "left" },
-      { x: 3, y: 7, dir: "left" },
-      { x: 1, y: 4, dir: "down" },
-      { x: 2, y: 4, dir: "up" },
-      { x: 11, y: 7, dir: "down" },
-      { x: 7, y: 6, dir: "right" },
-      { x: 4, y: 6, dir: "right" },
-      { x: 10, y: 8, dir: "left" },
-      { x: 1, y: 6, dir: "right" },
-      { x: 10, y: 6, dir: "down" },
-      { x: 8, y: 6, dir: "up" },
-      { x: 7, y: 5, dir: "right" },
-      { x: 0, y: 13, dir: "down" },
-      { x: 0, y: 4, dir: "down" },
-      { x: 1, y: 14, dir: "down" },
-      { x: 4, y: 2, dir: "left" },
-      { x: 7, y: 0, dir: "right" },
-      { x: 3, y: 0, dir: "up" },
-      { x: 5, y: 1, dir: "right" },
-      { x: 5, y: 14, dir: "down" },
-      { x: 6, y: 16, dir: "down" },
-      { x: 7, y: 15, dir: "up" },
-      { x: 4, y: 15, dir: "right" },
-      { x: 8, y: 2, dir: "left" },
-      { x: 3, y: 16, dir: "right" },
-      { x: 9, y: 15, dir: "right" },
-      { x: 6, y: 18, dir: "left" },
-      { x: 10, y: 2, dir: "left" },
-      { x: 9, y: 0, dir: "right" },
-      { x: 11, y: 4, dir: "down" },
-      { x: 1, y: 15, dir: "right" },
-      { x: 11, y: 14, dir: "down" },
-      { x: 9, y: 4, dir: "down" },
-      { x: 10, y: 14, dir: "right" },
-      { x: 8, y: 1, dir: "right" },
-      { x: 10, y: 16, dir: "down" },
-      { x: 1, y: 2, dir: "down" },
-      { x: 4, y: 14, dir: "right" },
-      { x: 8, y: 17, dir: "left" },
-      { x: 10, y: 4, dir: "down" },
-      { x: 4, y: 17, dir: "down" },
-      { x: 5, y: 17, dir: "left" },
-      { x: 2, y: 17, dir: "up" },
-      { x: 2, y: 2, dir: "up" },
-    ]
-  },
-  {
-    id: 15,
-    name: "第15关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 3, y: 4, dir: "down" },
-      { x: 6, y: 9, dir: "down" },
-      { x: 9, y: 8, dir: "right" },
-      { x: 7, y: 9, dir: "up" },
-      { x: 4, y: 9, dir: "up" },
-      { x: 7, y: 12, dir: "right" },
-      { x: 3, y: 9, dir: "down" },
-      { x: 9, y: 9, dir: "right" },
-      { x: 6, y: 11, dir: "right" },
-      { x: 6, y: 7, dir: "down" },
-      { x: 5, y: 9, dir: "down" },
-      { x: 9, y: 7, dir: "left" },
-      { x: 8, y: 13, dir: "down" },
-      { x: 4, y: 7, dir: "left" },
-      { x: 4, y: 6, dir: "right" },
-      { x: 9, y: 5, dir: "down" },
-      { x: 11, y: 9, dir: "right" },
-      { x: 5, y: 10, dir: "left" },
-      { x: 2, y: 6, dir: "down" },
-      { x: 11, y: 11, dir: "down" },
-      { x: 4, y: 5, dir: "right" },
-      { x: 11, y: 13, dir: "down" },
-      { x: 8, y: 5, dir: "down" },
-      { x: 11, y: 8, dir: "down" },
-      { x: 3, y: 11, dir: "right" },
-      { x: 8, y: 7, dir: "down" },
-      { x: 2, y: 8, dir: "right" },
-      { x: 9, y: 13, dir: "down" },
-      { x: 10, y: 12, dir: "up" },
-      { x: 8, y: 10, dir: "left" },
-      { x: 6, y: 4, dir: "down" },
-      { x: 1, y: 14, dir: "right" },
-      { x: 0, y: 12, dir: "down" },
-      { x: 9, y: 11, dir: "right" },
-      { x: 1, y: 9, dir: "right" },
-      { x: 4, y: 11, dir: "up" },
-      { x: 10, y: 5, dir: "up" },
-      { x: 3, y: 12, dir: "right" },
-      { x: 5, y: 13, dir: "down" },
-      { x: 2, y: 7, dir: "left" },
-      { x: 7, y: 5, dir: "right" },
-      { x: 5, y: 6, dir: "down" },
-      { x: 2, y: 2, dir: "down" },
-      { x: 6, y: 13, dir: "left" },
-      { x: 5, y: 0, dir: "right" },
-      { x: 8, y: 1, dir: "left" },
-      { x: 6, y: 1, dir: "down" },
-      { x: 11, y: 5, dir: "down" },
-      { x: 7, y: 6, dir: "up" },
-      { x: 2, y: 10, dir: "left" },
-      { x: 4, y: 2, dir: "right" },
-      { x: 6, y: 2, dir: "right" },
-      { x: 4, y: 4, dir: "left" },
-      { x: 8, y: 16, dir: "left" },
-      { x: 7, y: 14, dir: "up" },
-      { x: 10, y: 10, dir: "up" },
-      { x: 10, y: 1, dir: "up" },
-      { x: 8, y: 2, dir: "right" },
-      { x: 1, y: 2, dir: "right" },
-      { x: 8, y: 15, dir: "down" },
-      { x: 5, y: 15, dir: "down" },
-      { x: 10, y: 14, dir: "up" },
-      { x: 5, y: 3, dir: "right" },
-      { x: 4, y: 15, dir: "right" },
-      { x: 1, y: 6, dir: "right" },
-      { x: 4, y: 14, dir: "right" },
-      { x: 2, y: 16, dir: "down" },
-      { x: 10, y: 3, dir: "up" },
-      { x: 5, y: 17, dir: "right" },
-      { x: 6, y: 16, dir: "down" },
-      { x: 0, y: 7, dir: "left" },
-      { x: 3, y: 16, dir: "left" },
-      { x: 4, y: 1, dir: "left" },
-      { x: 1, y: 3, dir: "right" },
-      { x: 2, y: 4, dir: "down" },
-      { x: 9, y: 17, dir: "right" },
-      { x: 10, y: 16, dir: "left" },
-      { x: 7, y: 17, dir: "right" },
-      { x: 0, y: 4, dir: "left" },
-      { x: 9, y: 15, dir: "down" },
-    ]
-  },
-  {
-    id: 16,
-    name: "第16关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 7, y: 1, dir: "up" },
-      { x: 3, y: 16, dir: "left" },
-      { x: 2, y: 2, dir: "down" },
-      { x: 4, y: 0, dir: "up" },
-      { x: 8, y: 1, dir: "left" },
-      { x: 11, y: 2, dir: "right" },
-      { x: 8, y: 0, dir: "right" },
-      { x: 7, y: 8, dir: "right" },
-      { x: 6, y: 9, dir: "right" },
-      { x: 6, y: 1, dir: "down" },
-      { x: 10, y: 8, dir: "right" },
-      { x: 3, y: 2, dir: "down" },
-      { x: 6, y: 7, dir: "left" },
-      { x: 9, y: 7, dir: "left" },
-      { x: 3, y: 4, dir: "left" },
-      { x: 5, y: 2, dir: "down" },
-      { x: 3, y: 0, dir: "right" },
-      { x: 1, y: 2, dir: "right" },
-      { x: 6, y: 16, dir: "down" },
-      { x: 9, y: 2, dir: "right" },
-      { x: 11, y: 16, dir: "down" },
-      { x: 4, y: 17, dir: "right" },
-      { x: 7, y: 16, dir: "left" },
-      { x: 9, y: 16, dir: "down" },
-      { x: 9, y: 17, dir: "right" },
-      { x: 7, y: 17, dir: "right" },
-      { x: 9, y: 3, dir: "right" },
-      { x: 5, y: 16, dir: "down" },
-      { x: 8, y: 18, dir: "right" },
-      { x: 4, y: 2, dir: "up" },
-      { x: 3, y: 18, dir: "right" },
-      { x: 5, y: 18, dir: "down" },
-      { x: 10, y: 16, dir: "up" },
-      { x: 10, y: 9, dir: "up" },
-      { x: 8, y: 13, dir: "left" },
-      { x: 9, y: 12, dir: "right" },
-      { x: 9, y: 9, dir: "right" },
-      { x: 0, y: 5, dir: "down" },
-      { x: 2, y: 5, dir: "down" },
-      { x: 8, y: 4, dir: "left" },
-      { x: 7, y: 11, dir: "up" },
-      { x: 6, y: 11, dir: "right" },
-      { x: 6, y: 13, dir: "left" },
-      { x: 2, y: 3, dir: "right" },
-      { x: 11, y: 13, dir: "down" },
-      { x: 10, y: 4, dir: "up" },
-      { x: 5, y: 4, dir: "down" },
-      { x: 8, y: 11, dir: "down" },
-      { x: 7, y: 3, dir: "right" },
-      { x: 6, y: 10, dir: "left" },
-      { x: 1, y: 11, dir: "right" },
-      { x: 4, y: 10, dir: "up" },
-      { x: 10, y: 11, dir: "up" },
-      { x: 7, y: 4, dir: "up" },
-      { x: 2, y: 17, dir: "right" },
-      { x: 11, y: 4, dir: "down" },
-      { x: 1, y: 5, dir: "up" },
-      { x: 4, y: 6, dir: "right" },
-      { x: 3, y: 9, dir: "down" },
-      { x: 4, y: 7, dir: "up" },
-      { x: 5, y: 8, dir: "down" },
-      { x: 1, y: 16, dir: "left" },
-      { x: 8, y: 15, dir: "down" },
-      { x: 1, y: 8, dir: "right" },
-      { x: 11, y: 11, dir: "down" },
-      { x: 2, y: 15, dir: "down" },
-      { x: 0, y: 16, dir: "down" },
-      { x: 3, y: 14, dir: "down" },
-      { x: 8, y: 7, dir: "down" },
-      { x: 1, y: 9, dir: "up" },
-      { x: 5, y: 14, dir: "right" },
-      { x: 6, y: 5, dir: "right" },
-      { x: 6, y: 6, dir: "right" },
-      { x: 9, y: 11, dir: "down" },
-      { x: 2, y: 8, dir: "down" },
-    ]
-  },
-  {
-    id: 17,
-    name: "第17关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 10, y: 16, dir: "left" },
-      { x: 7, y: 0, dir: "up" },
-      { x: 4, y: 1, dir: "up" },
-      { x: 5, y: 2, dir: "down" },
-      { x: 7, y: 2, dir: "up" },
-      { x: 1, y: 2, dir: "up" },
-      { x: 3, y: 2, dir: "right" },
-      { x: 4, y: 18, dir: "right" },
-      { x: 9, y: 2, dir: "right" },
-      { x: 6, y: 16, dir: "down" },
-      { x: 9, y: 18, dir: "down" },
-      { x: 7, y: 16, dir: "up" },
-      { x: 8, y: 18, dir: "down" },
-      { x: 8, y: 16, dir: "down" },
-      { x: 3, y: 16, dir: "left" },
-      { x: 7, y: 18, dir: "right" },
-      { x: 9, y: 16, dir: "down" },
-      { x: 6, y: 12, dir: "right" },
-      { x: 8, y: 10, dir: "left" },
-      { x: 7, y: 11, dir: "right" },
-      { x: 5, y: 17, dir: "right" },
-      { x: 3, y: 17, dir: "right" },
-      { x: 10, y: 9, dir: "up" },
-      { x: 7, y: 12, dir: "up" },
-      { x: 9, y: 13, dir: "down" },
-      { x: 11, y: 11, dir: "right" },
-      { x: 9, y: 9, dir: "down" },
-      { x: 5, y: 10, dir: "left" },
-      { x: 2, y: 13, dir: "left" },
-      { x: 10, y: 13, dir: "left" },
-      { x: 8, y: 13, dir: "down" },
-      { x: 2, y: 10, dir: "left" },
-      { x: 5, y: 13, dir: "left" },
-      { x: 11, y: 9, dir: "down" },
-      { x: 2, y: 11, dir: "right" },
-      { x: 0, y: 12, dir: "down" },
-      { x: 5, y: 16, dir: "down" },
-      { x: 4, y: 11, dir: "up" },
-      { x: 1, y: 13, dir: "up" },
-      { x: 9, y: 11, dir: "right" },
-      { x: 0, y: 10, dir: "left" },
-      { x: 2, y: 1, dir: "down" },
-      { x: 6, y: 2, dir: "down" },
-      { x: 9, y: 0, dir: "right" },
-      { x: 5, y: 0, dir: "right" },
-      { x: 9, y: 1, dir: "left" },
-      { x: 3, y: 1, dir: "down" },
-      { x: 10, y: 2, dir: "up" },
-      { x: 9, y: 4, dir: "left" },
-      { x: 3, y: 3, dir: "right" },
-      { x: 0, y: 3, dir: "down" },
-      { x: 7, y: 5, dir: "up" },
-      { x: 5, y: 4, dir: "down" },
-      { x: 4, y: 3, dir: "up" },
-      { x: 5, y: 8, dir: "right" },
-      { x: 8, y: 9, dir: "right" },
-      { x: 6, y: 9, dir: "down" },
-      { x: 2, y: 4, dir: "left" },
-      { x: 7, y: 7, dir: "up" },
-      { x: 6, y: 7, dir: "down" },
-      { x: 8, y: 4, dir: "down" },
-      { x: 9, y: 7, dir: "down" },
-      { x: 11, y: 7, dir: "down" },
-      { x: 1, y: 4, dir: "up" },
-      { x: 2, y: 8, dir: "down" },
-      { x: 5, y: 9, dir: "right" },
-      { x: 10, y: 7, dir: "up" },
-      { x: 3, y: 7, dir: "left" },
-      { x: 6, y: 5, dir: "down" },
-      { x: 5, y: 7, dir: "down" },
-      { x: 3, y: 5, dir: "right" },
-      { x: 11, y: 5, dir: "down" },
-      { x: 10, y: 5, dir: "right" },
-      { x: 1, y: 15, dir: "right" },
-      { x: 11, y: 15, dir: "down" },
-      { x: 5, y: 14, dir: "right" },
-    ]
-  },
-  {
-    id: 18,
-    name: "第18关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 4, y: 6, dir: "down" },
-      { x: 2, y: 11, dir: "up" },
-      { x: 5, y: 7, dir: "up" },
-      { x: 0, y: 3, dir: "left" },
-      { x: 11, y: 2, dir: "right" },
-      { x: 1, y: 6, dir: "right" },
-      { x: 6, y: 9, dir: "right" },
-      { x: 5, y: 14, dir: "right" },
-      { x: 10, y: 11, dir: "right" },
-      { x: 8, y: 4, dir: "right" },
-      { x: 7, y: 12, dir: "up" },
-      { x: 5, y: 2, dir: "down" },
-      { x: 8, y: 7, dir: "right" },
-      { x: 1, y: 15, dir: "right" },
-      { x: 6, y: 13, dir: "up" },
-      { x: 4, y: 7, dir: "right" },
-      { x: 10, y: 6, dir: "left" },
-      { x: 7, y: 5, dir: "up" },
-      { x: 3, y: 3, dir: "up" },
-      { x: 10, y: 5, dir: "left" },
-      { x: 2, y: 15, dir: "up" },
-      { x: 6, y: 11, dir: "left" },
-      { x: 10, y: 8, dir: "left" },
-      { x: 8, y: 16, dir: "up" },
-      { x: 9, y: 13, dir: "down" },
-      { x: 7, y: 15, dir: "up" },
-      { x: 1, y: 12, dir: "right" },
-      { x: 4, y: 16, dir: "left" },
-      { x: 8, y: 2, dir: "down" },
-      { x: 3, y: 12, dir: "up" },
-      { x: 4, y: 15, dir: "left" },
-      { x: 2, y: 4, dir: "right" },
-      { x: 3, y: 2, dir: "left" },
-      { x: 8, y: 14, dir: "left" },
-      { x: 10, y: 7, dir: "right" },
-      { x: 3, y: 9, dir: "up" },
-      { x: 1, y: 10, dir: "down" },
-      { x: 10, y: 3, dir: "up" },
-      { x: 9, y: 9, dir: "down" },
-      { x: 8, y: 10, dir: "up" },
-      { x: 7, y: 1, dir: "down" },
-      { x: 8, y: 8, dir: "up" },
-      { x: 1, y: 16, dir: "right" },
-      { x: 0, y: 13, dir: "left" },
-      { x: 4, y: 1, dir: "down" },
-      { x: 1, y: 8, dir: "right" },
-      { x: 6, y: 17, dir: "up" },
-      { x: 8, y: 3, dir: "right" },
-      { x: 1, y: 14, dir: "right" },
-      { x: 8, y: 5, dir: "left" },
-      { x: 6, y: 0, dir: "up" },
-      { x: 10, y: 10, dir: "right" },
-      { x: 4, y: 17, dir: "left" },
-      { x: 8, y: 0, dir: "left" },
-      { x: 3, y: 18, dir: "right" },
-      { x: 7, y: 17, dir: "up" },
-      { x: 4, y: 10, dir: "left" },
-      { x: 9, y: 18, dir: "right" },
-      { x: 10, y: 17, dir: "right" },
-      { x: 7, y: 2, dir: "right" },
-      { x: 3, y: 1, dir: "right" },
-      { x: 10, y: 12, dir: "left" },
-      { x: 8, y: 13, dir: "down" },
-      { x: 6, y: 6, dir: "right" },
-      { x: 5, y: 13, dir: "right" },
-      { x: 0, y: 11, dir: "left" },
-      { x: 6, y: 5, dir: "right" },
-      { x: 3, y: 16, dir: "up" },
-      { x: 8, y: 6, dir: "left" },
-      { x: 2, y: 0, dir: "left" },
-      { x: 2, y: 5, dir: "right" },
-      { x: 2, y: 13, dir: "up" },
-      { x: 5, y: 4, dir: "down" },
-      { x: 4, y: 4, dir: "down" },
-      { x: 10, y: 15, dir: "left" },
-    ]
-  },
-  {
-    id: 19,
-    name: "第19关",
-    animalType: "pig",
-    playArea: {
-      x: 0,
-      y: 0,
-      cols: 12,
-      rows: 19
-    },
-    animals: [
-      { x: 6, y: 9, dir: "down" },
-      { x: 8, y: 6, dir: "up" },
-      { x: 3, y: 7, dir: "right" },
-      { x: 1, y: 4, dir: "down" },
-      { x: 4, y: 12, dir: "down" },
-      { x: 1, y: 14, dir: "down" },
-      { x: 9, y: 16, dir: "right" },
-      { x: 10, y: 11, dir: "down" },
-      { x: 6, y: 4, dir: "down" },
-      { x: 4, y: 6, dir: "right" },
-      { x: 7, y: 2, dir: "left" },
-      { x: 7, y: 3, dir: "up" },
-      { x: 6, y: 15, dir: "down" },
-      { x: 5, y: 9, dir: "up" },
-      { x: 2, y: 8, dir: "left" },
-      { x: 5, y: 8, dir: "right" },
-      { x: 3, y: 12, dir: "down" },
-      { x: 4, y: 5, dir: "down" },
-      { x: 8, y: 11, dir: "left" },
-      { x: 5, y: 7, dir: "right" },
-      { x: 8, y: 13, dir: "down" },
-      { x: 3, y: 16, dir: "up" },
-      { x: 6, y: 7, dir: "down" },
-      { x: 7, y: 15, dir: "up" },
-      { x: 7, y: 13, dir: "right" },
-      { x: 2, y: 13, dir: "down" },
-      { x: 3, y: 13, dir: "left" },
-      { x: 10, y: 16, dir: "up" },
-      { x: 8, y: 8, dir: "right" },
-      { x: 5, y: 3, dir: "down" },
-      { x: 8, y: 3, dir: "up" },
-      { x: 2, y: 4, dir: "left" },
-      { x: 2, y: 15, dir: "left" },
-      { x: 10, y: 5, dir: "right" },
-      { x: 1, y: 8, dir: "up" },
-      { x: 3, y: 5, dir: "right" },
-      { x: 7, y: 12, dir: "down" },
-      { x: 10, y: 8, dir: "down" },
-      { x: 10, y: 15, dir: "right" },
-      { x: 10, y: 3, dir: "right" },
-      { x: 9, y: 13, dir: "up" },
-      { x: 8, y: 17, dir: "right" },
-      { x: 6, y: 5, dir: "right" },
-      { x: 2, y: 2, dir: "up" },
-      { x: 1, y: 6, dir: "up" },
-      { x: 4, y: 16, dir: "down" },
-      { x: 3, y: 2, dir: "left" },
-      { x: 1, y: 16, dir: "down" },
-      { x: 7, y: 10, dir: "left" },
-      { x: 4, y: 3, dir: "right" },
-      { x: 1, y: 11, dir: "left" },
-      { x: 2, y: 17, dir: "down" },
-      { x: 8, y: 9, dir: "left" },
-      { x: 9, y: 12, dir: "left" },
-      { x: 9, y: 17, dir: "up" },
-      { x: 6, y: 2, dir: "down" },
-      { x: 3, y: 9, dir: "right" },
-      { x: 4, y: 17, dir: "left" },
-      { x: 6, y: 11, dir: "down" },
-      { x: 0, y: 5, dir: "left" },
-      { x: 7, y: 7, dir: "down" },
-      { x: 5, y: 14, dir: "up" },
-      { x: 5, y: 11, dir: "up" },
-      { x: 9, y: 4, dir: "left" },
-      { x: 3, y: 14, dir: "right" },
-      { x: 7, y: 14, dir: "left" },
-      { x: 10, y: 14, dir: "down" },
-      { x: 10, y: 2, dir: "right" },
-      { x: 3, y: 10, dir: "right" },
-      { x: 10, y: 9, dir: "left" },
-      { x: 4, y: 9, dir: "up" },
-      { x: 0, y: 15, dir: "down" },
-      { x: 9, y: 7, dir: "down" },
-      { x: 0, y: 12, dir: "left" },
-      { x: 8, y: 5, dir: "right" },
-    ]
-  }
-];
+const LEVELS = window.PIG_ESCAPE_LEVELS ?? [];
+const EDITOR_LEVELS_STORAGE_KEY = "pigEscapeEditorDeployedLevelsV2Board10x16";
 
-const EDITOR_LEVELS_STORAGE_KEY = "pigEscapeEditorDeployedLevelsV1";
+const DEV_TOOL_TEST_STATE = {
+  progress: {
+    1: { stars: 3, score: 3000 },
+    2: { stars: 3, score: 3000 },
+    3: { stars: 3, score: 3000 },
+    4: { stars: 3, score: 3000 },
+    5: { stars: 3, score: 3000 },
+  },
+  unlockedCollection: ["remove", "firecracker", "flip", "stimulant"],
+  equippedTools: ["remove", "flip", "stimulant"],
+  enabledAbilities: ["firecracker"],
+};
+
+function isDevToolTestMode() {
+  return window.PIG_ESCAPE_DEV_TOOLS === true
+    || new URLSearchParams(window.location.search).get("devTools") === "1";
+}
 
 function getGameLevels() {
   try {
     const raw = window.localStorage.getItem(EDITOR_LEVELS_STORAGE_KEY);
     if (!raw) return LEVELS;
     const levels = JSON.parse(raw);
-    return Array.isArray(levels) && levels.length > 0 ? levels : LEVELS;
+    return isLevelSetCompatibleWithBoard(levels) ? levels : LEVELS;
   } catch (error) {
     return LEVELS;
   }
+}
+
+function isLevelSetCompatibleWithBoard(levels) {
+  return Array.isArray(levels)
+    && levels.length > 0
+    && levels.every((level) => (
+      level?.playArea?.cols === BOARD.cols
+      && level?.playArea?.rows === BOARD.rows
+      && Array.isArray(level.animals)
+    ));
 }
 
 const state = {
@@ -1807,6 +304,11 @@ const state = {
     stimulant: 0,
   },
   scoreBurstToken: 0,
+  audioEnabled: loadAudioEnabled(),
+  audioUnlocked: false,
+  currentBgm: null,
+  lastAudioAt: {},
+  levelCompleteSoundPlayed: false,
 };
 
 const PIG_MARKUP = `
@@ -1860,6 +362,170 @@ const collectionRevealName = document.querySelector("#collectionRevealName");
 const collectionRevealMeta = document.querySelector("#collectionRevealMeta");
 const collectionRevealClose = document.querySelector("#collectionRevealClose");
 const closeToolUnlockBtn = document.querySelector("#closeToolUnlockBtn");
+const soundToggleButtons = document.querySelectorAll("[data-sound-toggle]");
+
+const audioBank = createAudioBank();
+
+function createAudioBank() {
+  return Object.fromEntries(
+    Object.entries(AUDIO_FILES).map(([key, file]) => {
+      const audio = new Audio(`${AUDIO_BASE_PATH}${file}`);
+      audio.preload = key.startsWith("bgm") ? "metadata" : "auto";
+      audio.volume = AUDIO_VOLUMES[key] ?? 0.35;
+      audio.loop = key.startsWith("bgm");
+      return [key, audio];
+    }),
+  );
+}
+
+function loadAudioEnabled() {
+  try {
+    return window.localStorage.getItem(AUDIO_ENABLED_STORAGE_KEY) !== "0";
+  } catch (error) {
+    return true;
+  }
+}
+
+function saveAudioEnabled() {
+  try {
+    window.localStorage.setItem(AUDIO_ENABLED_STORAGE_KEY, state.audioEnabled ? "1" : "0");
+  } catch (error) {
+    // Ignore storage failures; the in-memory switch still works for this session.
+  }
+}
+
+function loadAudioElements() {
+  Object.values(audioBank).forEach((audio) => {
+    audio.load();
+  });
+}
+
+function unlockAudio() {
+  if (state.audioUnlocked) return;
+  state.audioUnlocked = true;
+  if (!state.audioEnabled) return;
+  loadAudioElements();
+  syncBackgroundMusic();
+}
+
+function playSound(key, options = {}) {
+  if (!state.audioEnabled) return;
+  if (!state.audioUnlocked) return;
+  const source = audioBank[key];
+  if (!source) return;
+  const now = performance.now();
+  const throttleMs = options.throttleMs ?? AUDIO_THROTTLE_MS[key] ?? 0;
+  if (throttleMs > 0 && now - (state.lastAudioAt[key] ?? 0) < throttleMs) return;
+  state.lastAudioAt[key] = now;
+
+  const audio = source.cloneNode();
+  audio.volume = Math.max(0, Math.min(1, options.volume ?? AUDIO_VOLUMES[key] ?? source.volume));
+  audio.play().catch(() => {});
+  window.setTimeout(() => {
+    audio.pause();
+    audio.src = "";
+  }, Math.max(900, (options.durationMs ?? 0) + 1200));
+}
+
+function switchBackgroundMusic(key) {
+  if (!state.audioEnabled) {
+    pauseBackgroundMusic();
+    return;
+  }
+  if (!state.audioUnlocked || state.currentBgm === key) return;
+  ["bgmHome", "bgmGame"].forEach((bgmKey) => {
+    const audio = audioBank[bgmKey];
+    if (!audio) return;
+    if (bgmKey !== key) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  });
+
+  const nextAudio = audioBank[key];
+  if (!nextAudio) return;
+  state.currentBgm = key;
+  nextAudio.volume = AUDIO_VOLUMES[key] ?? 0.16;
+  nextAudio.play().catch(() => {
+    state.currentBgm = null;
+  });
+}
+
+function pauseBackgroundMusic() {
+  ["bgmHome", "bgmGame"].forEach((bgmKey) => {
+    const audio = audioBank[bgmKey];
+    if (audio) audio.pause();
+  });
+  state.currentBgm = null;
+}
+
+function syncBackgroundMusic() {
+  if (!state.audioEnabled) {
+    pauseBackgroundMusic();
+    return;
+  }
+  switchBackgroundMusic(document.body.classList.contains("is-starting") ? "bgmHome" : "bgmGame");
+}
+
+function updateSoundToggleButtons() {
+  const label = state.audioEnabled ? "关闭音效" : "开启音效";
+  soundToggleButtons.forEach((button) => {
+    button.classList.toggle("is-muted", !state.audioEnabled);
+    button.setAttribute("aria-pressed", state.audioEnabled ? "true" : "false");
+    button.setAttribute("aria-label", label);
+    button.title = label;
+  });
+}
+
+function setAudioEnabled(enabled) {
+  state.audioEnabled = Boolean(enabled);
+  saveAudioEnabled();
+  updateSoundToggleButtons();
+  if (!state.audioEnabled) {
+    pauseBackgroundMusic();
+    return;
+  }
+  if (state.audioUnlocked) {
+    loadAudioElements();
+    syncBackgroundMusic();
+    playSound("buttonTap", { throttleMs: 0 });
+  }
+}
+
+function bindAudioUnlock() {
+  document.addEventListener("pointerdown", unlockAudio, { capture: true, once: true });
+  document.addEventListener("keydown", unlockAudio, { capture: true, once: true });
+}
+
+function bindGlobalButtonSounds() {
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button || button.disabled) return;
+    if (button.classList.contains("pig")) return;
+    if (button.matches("[data-sound-toggle]")) return;
+    if (
+      button === homeBtn
+      || button === closeToolUnlockBtn
+      || button === collectionRevealClose
+      || button.classList.contains("modal-close-button")
+    ) {
+      playSound("buttonBack");
+      return;
+    }
+    if (
+      button.classList.contains("collection-tab")
+      || button.classList.contains("tool-unlock-item")
+      || button === totalStarsButton
+      || button === startStarsButton
+      || button === startStarsStatButton
+      || button === completeUnlockNotice
+    ) {
+      playSound("collectionSelect");
+      return;
+    }
+    playSound("buttonTap");
+  }, true);
+}
 
 function initLevel(index = 0) {
   const levels = getGameLevels();
@@ -1876,6 +542,7 @@ function initLevel(index = 0) {
   state.shouldPlayAnimalDrop = true;
   state.toolMode = null;
   state.firecrackerRunning = false;
+  state.levelCompleteSoundPlayed = false;
   state.toolUses = {
     remove: 0,
     flip: 0,
@@ -1909,6 +576,7 @@ function initLevel(index = 0) {
   hideLevelCompleteModal();
   updateToolState();
   restoreFirecrackerPosition();
+  syncBackgroundMusic();
 }
 
 function render() {
@@ -2055,6 +723,7 @@ function bindAnimalInput(element, animalId) {
 }
 
 function playAnimalTapFeedback(element) {
+  playSound("pigTapSnort");
   element.classList.remove("is-pressing");
   element.classList.add("is-activated");
   window.setTimeout(() => {
@@ -2102,6 +771,7 @@ function flipAnimal(animal, element) {
   element.style.setProperty("--z", Math.round(center.y * 2 + 10));
   void element.offsetWidth;
   element.classList.add("is-flipping");
+  playSound("toolFlipWoosh");
 
   window.setTimeout(() => {
     if (!animal.active) return;
@@ -2312,6 +982,7 @@ function exitAnimal(animal, element, msPerCell = null) {
   element.classList.remove("is-dropping");
   element.style.removeProperty("--drop-delay");
   element.classList.add("is-leaving", "is-running");
+  playSound("pigRunGrass");
   spawnRunTrail(center, dir, cellsToEntry, animalType, msPerCell ?? animalType.moveMsPerCell);
 
   animal.active = false;
@@ -2331,6 +1002,7 @@ function stimulantDirectExitAnimal(animal, element) {
   const animalType = getAnimalType(animal);
   const boostMsPerCell = getStimulantMoveMsPerCell(animalType);
   element.classList.add("is-boosted");
+  playSound("toolStimulantZap");
   window.setTimeout(() => {
     if (!animal.active || animal.busy) return;
     exitAnimal(animal, element, boostMsPerCell);
@@ -2343,6 +1015,7 @@ function stimulantCrashAnimal(animal, element, blocker) {
   element.classList.remove("is-dropping");
   element.style.removeProperty("--drop-delay");
   element.classList.add("is-boosted");
+  playSound("toolStimulantZap");
   window.setTimeout(() => {
     if (!animal.active || animal.busy) return;
     element.classList.add("is-running");
@@ -2368,6 +1041,7 @@ function stimulantJumpAnimal(animal, element, plan, onLanded) {
   element.classList.remove("is-dropping");
   element.style.removeProperty("--drop-delay");
   element.classList.add("is-boosted");
+  playSound("toolStimulantZap");
 
   window.setTimeout(() => {
     if (runToken !== state.runToken || !animal.active || animal.busy) return;
@@ -2454,6 +1128,9 @@ async function runPathToGate(runner, start, dirKey, animalType, runToken) {
     const next = route[index];
     await movePathRunner(runner, current, next, animalType, index);
     current = next;
+    if (isPathGatePoint(next)) {
+      playSound("pigExitGate");
+    }
     if (PATH_EXIT.turnPauseMs > 0) {
       await wait(PATH_EXIT.turnPauseMs);
     }
@@ -2551,6 +1228,13 @@ function getPathSegmentDir(dx, dy) {
   return dy >= 0 ? "down" : "up";
 }
 
+function isPathGatePoint(point) {
+  return (
+    Math.abs(point.x - BOARD.cols / 2) < 0.05
+    && Math.abs(point.y - PATH_EXIT.gateYCells) < 0.05
+  );
+}
+
 function setPathRunnerPoint(runner, point, durationMs) {
   const screenPoint = getPastureScreenPoint(point);
   runner.style.setProperty("--path-left", `${screenPoint.x}px`);
@@ -2582,6 +1266,7 @@ function removeAnimal(animal, element) {
   animal.busy = true;
   const animalType = getAnimalType(animal);
   const center = getAnimalCenter(animal);
+  playSound("toolRemovePop");
   spawnBurst(center.x, center.y, animalType, "remove");
   element.classList.add("is-removed");
   animal.active = false;
@@ -2621,6 +1306,7 @@ function crashAnimal(animal, element, blocker, msPerCell = null) {
   setRunOffset(element, dir, travelCells);
 
   window.setTimeout(() => {
+    playSound("pigHitDizzy");
     setMotion(element, bumpMs, MOVE_EASING.crashBump);
     setRunOffset(element, dir, bumpCells);
   }, travelMs);
@@ -2657,6 +1343,7 @@ function settleCrashedAnimalElement(animal, element) {
 }
 
 function checkLevelComplete() {
+  if (state.locked) return;
   if (state.cleared === state.animals.length) {
     state.locked = true;
     state.toolMode = null;
@@ -2681,6 +1368,7 @@ async function useFirecracker() {
   setToolMode(null);
   state.firecrackerRunning = true;
   updateToolState();
+  playSound("firecrackerPop");
   playFirecrackerEffect();
   await wait(FIRECRACKER_START_DELAY_MS);
 
@@ -2791,41 +1479,6 @@ function spawnPathRunTrail(center, dir, cells, animalType) {
   }
 }
 
-function getFootprint(animal) {
-  const dir = DIRS[animal.dir];
-  return [
-    { x: animal.x, y: animal.y },
-    { x: animal.x - dir.dx, y: animal.y - dir.dy },
-  ];
-}
-
-function isInsideBoardCell(x, y) {
-  return x >= 0 && x < BOARD.cols && y >= 0 && y < BOARD.rows;
-}
-
-function isCornerCutoutCell(x, y) {
-  const arcStart = CORNER_CUTOUT.arcStartCell;
-  const left = x < arcStart;
-  const right = x >= BOARD.cols - arcStart;
-  const top = y < arcStart;
-  const bottom = y >= BOARD.rows - arcStart;
-  if (!(left || right) || !(top || bottom)) return false;
-
-  const centerX = left ? arcStart : BOARD.cols - arcStart;
-  const centerY = top ? arcStart : BOARD.rows - arcStart;
-  const farthestX = left ? x : x + 1;
-  const farthestY = top ? y : y + 1;
-  return Math.hypot(farthestX - centerX, farthestY - centerY) > arcStart;
-}
-
-function isPlayableCell(x, y) {
-  return isInsideBoardCell(x, y) && !isCornerCutoutCell(x, y);
-}
-
-function isAnimalOnPlayableCells(animal) {
-  return getFootprint(animal).every((cell) => isPlayableCell(cell.x, cell.y));
-}
-
 function getExitTravelCells(animal) {
   const dir = DIRS[animal.dir];
   for (let step = 1; ; step += 1) {
@@ -2845,13 +1498,6 @@ function getExitAnimationTravelCells(animal, pathEntry) {
     ? Math.abs(pathEntry.x - center.x)
     : Math.abs(pathEntry.y - center.y);
   return Math.max(0.2, projectedCells);
-}
-
-function getAnimalCenter(animal) {
-  const cells = getFootprint(animal);
-  const x = cells.reduce((sum, cell) => sum + cell.x + 0.5, 0) / cells.length;
-  const y = cells.reduce((sum, cell) => sum + cell.y + 0.5, 0) / cells.length;
-  return { x, y };
 }
 
 function getAnimalType(animal) {
@@ -2915,6 +1561,10 @@ function showLevelCompleteModal(stars) {
   const hasNextLevel = state.levelIndex + 1 < getGameLevels().length;
   nextLevelBtn.disabled = !hasNextLevel;
   levelCompleteModal.hidden = false;
+  if (!state.levelCompleteSoundPlayed) {
+    state.levelCompleteSoundPlayed = true;
+    playSound("levelCompleteStars");
+  }
 }
 
 function hideLevelCompleteModal() {
@@ -2948,6 +1598,7 @@ function resetCombo() {
 function showComboBurst(combo, gainedScore = getExitScoreForCombo(combo), scorePoint = null) {
   const burstToken = state.scoreBurstToken + 1;
   state.scoreBurstToken = burstToken;
+  playSound("comboPop");
   if (scorePoint) {
     comboBurst.style.setProperty("--score-x", scorePoint.x);
     comboBurst.style.setProperty("--score-y", scorePoint.y - 0.82);
@@ -3132,6 +1783,10 @@ function getPreviewLevelIndexFromUrl() {
 }
 
 function loadProgress() {
+  if (isDevToolTestMode()) {
+    return JSON.parse(JSON.stringify(DEV_TOOL_TEST_STATE.progress));
+  }
+
   try {
     return JSON.parse(window.localStorage.getItem(PROGRESS_STORAGE_KEY)) ?? {};
   } catch {
@@ -3156,6 +1811,13 @@ function getStarterCollectionKeys() {
 
 function loadUnlockedCollection() {
   const unlocked = new Set(getStarterCollectionKeys());
+  if (isDevToolTestMode()) {
+    DEV_TOOL_TEST_STATE.unlockedCollection.forEach((key) => {
+      if (COLLECTION_ITEMS[key]) unlocked.add(key);
+    });
+    return unlocked;
+  }
+
   try {
     const saved = JSON.parse(window.localStorage.getItem(UNLOCKED_COLLECTION_STORAGE_KEY));
     if (!Array.isArray(saved)) return unlocked;
@@ -3169,6 +1831,8 @@ function loadUnlockedCollection() {
 }
 
 function saveUnlockedCollection() {
+  if (isDevToolTestMode()) return;
+
   try {
     window.localStorage.setItem(
       UNLOCKED_COLLECTION_STORAGE_KEY,
@@ -3187,6 +1851,12 @@ function getStarterToolKeys() {
 
 function loadEquippedTools() {
   const fallback = new Set(getStarterToolKeys());
+  if (isDevToolTestMode()) {
+    return new Set(
+      DEV_TOOL_TEST_STATE.equippedTools.filter((key) => COLLECTION_ITEMS[key]?.type === "tool"),
+    );
+  }
+
   try {
     const saved = JSON.parse(window.localStorage.getItem(EQUIPPED_TOOLS_STORAGE_KEY));
     const unlocked = loadUnlockedCollection();
@@ -3211,6 +1881,8 @@ function loadEquippedTools() {
 }
 
 function saveEquippedTools() {
+  if (isDevToolTestMode()) return;
+
   try {
     window.localStorage.setItem(
       EQUIPPED_TOOLS_STORAGE_KEY,
@@ -3222,6 +1894,12 @@ function saveEquippedTools() {
 }
 
 function loadEnabledAbilities() {
+  if (isDevToolTestMode()) {
+    return new Set(
+      DEV_TOOL_TEST_STATE.enabledAbilities.filter((key) => COLLECTION_ITEMS[key]?.type === "ability"),
+    );
+  }
+
   try {
     const saved = JSON.parse(window.localStorage.getItem(ENABLED_ABILITIES_STORAGE_KEY));
     if (Array.isArray(saved)) {
@@ -3240,6 +1918,8 @@ function loadEnabledAbilities() {
 }
 
 function saveEnabledAbilities() {
+  if (isDevToolTestMode()) return;
+
   try {
     window.localStorage.setItem(
       ENABLED_ABILITIES_STORAGE_KEY,
@@ -3251,6 +1931,8 @@ function saveEnabledAbilities() {
 }
 
 function saveEquippedSkin(key) {
+  if (isDevToolTestMode()) return;
+
   try {
     window.localStorage.setItem(EQUIPPED_SKIN_STORAGE_KEY, key);
   } catch {
@@ -3259,6 +1941,8 @@ function saveEquippedSkin(key) {
 }
 
 function saveProgress() {
+  if (isDevToolTestMode()) return;
+
   try {
     window.localStorage.setItem(
       PROGRESS_STORAGE_KEY,
@@ -3284,6 +1968,8 @@ function saveLevelResult(levelIndex, score, stars) {
 }
 
 function loadFirecrackerPosition() {
+  if (isDevToolTestMode()) return null;
+
   try {
     const position = JSON.parse(window.localStorage.getItem(FIRECRACKER_POSITION_KEY));
     if (
@@ -3303,6 +1989,8 @@ function loadFirecrackerPosition() {
 }
 
 function saveFirecrackerPosition(position) {
+  if (isDevToolTestMode()) return;
+
   try {
     window.localStorage.setItem(FIRECRACKER_POSITION_KEY, JSON.stringify(position));
   } catch {
@@ -3473,6 +2161,14 @@ window.addEventListener("resize", () => {
   restoreFirecrackerPosition();
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    pauseBackgroundMusic();
+    return;
+  }
+  syncBackgroundMusic();
+});
+
 replayLevelBtn.addEventListener("click", () => {
   initLevel(state.levelIndex);
 });
@@ -3497,6 +2193,12 @@ startStarsStatButton?.addEventListener("click", () => {
 
 totalStarsButton.addEventListener("click", () => {
   openToolUnlockModal();
+});
+
+soundToggleButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setAudioEnabled(!state.audioEnabled);
+  });
 });
 
 completeUnlockNotice?.addEventListener("click", () => {
@@ -3650,19 +2352,6 @@ function getToolStarsLeft(tool) {
   const unlock = COLLECTION_ITEMS[tool];
   if (!unlock) return 0;
   return Math.max(0, unlock.requiredStars - getTotalStars());
-}
-
-function getCellKey(cell) {
-  return `${cell.x},${cell.y}`;
-}
-
-function isSameAnimal(first, second) {
-  if (!first || !second) return false;
-  if (first.index !== undefined && second.index !== undefined) {
-    return first.index === second.index;
-  }
-  if (first.id !== undefined && second.id !== undefined) return first.id === second.id;
-  return first === second;
 }
 
 function renderStartScreen() {
@@ -4043,6 +2732,7 @@ function showCollectionReveal(key, options = {}) {
   collectionReveal.classList.remove("is-playing");
   void collectionReveal.offsetWidth;
   collectionReveal.classList.add("is-playing");
+  playSound("unlockSparkle", { throttleMs: 360 });
 }
 
 function hideCollectionReveal() {
@@ -4068,9 +2758,14 @@ function returnToStartScreen() {
   updateToolState();
   renderStartScreen();
   document.body.classList.add("is-starting");
+  syncBackgroundMusic();
 }
 
+bindAudioUnlock();
+bindGlobalButtonSounds();
+updateSoundToggleButtons();
 renderStartScreen();
+syncBackgroundMusic();
 
 const previewLevelIndex = getPreviewLevelIndexFromUrl();
 if (previewLevelIndex !== null) {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>小猪出栏 - 第一关</title>
-    <link rel="stylesheet" href="./styles.css?v=cleanup-v5" />
+    <link rel="stylesheet" href="./styles.css?v=board-10x16-v1" />
   </head>
   <body class="is-starting">
     <main class="game-shell">
@@ -13,6 +13,9 @@
           <img class="start-hero-image" src="./assets/optimized/home-selected-level-flag-mobile.jpg" alt="" />
           <h1 class="visually-hidden" id="startTitle">小猪快跑</h1>
           <button class="start-collection-button" id="startStarsButton" type="button">收藏馆</button>
+          <button class="sound-toggle start-sound-toggle" type="button" data-sound-toggle aria-label="关闭音效" aria-pressed="true" title="关闭音效">
+            <span aria-hidden="true">♪</span>
+          </button>
           <div class="start-stats" aria-label="玩家进度">
             <button class="start-stat-card start-stars-card" id="startStarsStatButton" type="button" aria-label="查看收藏馆">
               <span class="start-stat-label">总星数</span>
@@ -35,6 +38,9 @@
           </button>
           <button class="icon-button" id="restartBtn" aria-label="重新开始" title="重新开始">
             <span aria-hidden="true">↻</span>
+          </button>
+          <button class="icon-button sound-toggle game-sound-toggle" type="button" data-sound-toggle aria-label="关闭音效" aria-pressed="true" title="关闭音效">
+            <span aria-hidden="true">♪</span>
           </button>
         </div>
         <div class="status-pill">
@@ -145,6 +151,8 @@
 
     </main>
 
-    <script src="./game.js?v=tool-unlock-1"></script>
+    <script src="./board-core.js?v=board-10x16-v1"></script>
+    <script src="./levels.js?v=levels-10x16-v1"></script>
+    <script src="./game.js?v=board-10x16-v1"></script>
   </body>
 </html>

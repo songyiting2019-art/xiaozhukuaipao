@@ -1,7 +1,7 @@
 :root {
-  --board-cols: 12;
-  --board-rows: 19;
-  --cell: min(calc((100vw - 118px) / 12), calc((100dvh - 318px) / 19), 22.8px);
+  --board-cols: 10;
+  --board-rows: 16;
+  --cell: min(calc((100vw - 118px) / 10), calc((100dvh - 318px) / 16), 27.3px);
   --pig-scale-x: 1.32;
   --pig-scale-y: 2.28;
   --pig-vertical-sprite-offset-y: calc(var(--cell) * -0.05);
@@ -356,6 +356,65 @@ body.is-starting .tool-row {
   transform: translateY(2px);
 }
 
+.sound-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+}
+
+.sound-toggle span {
+  position: relative;
+  z-index: 1;
+}
+
+.sound-toggle::after {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 24px;
+  height: 3px;
+  border-radius: 999px;
+  content: "";
+  background: #a63a22;
+  box-shadow: 0 1px 0 rgba(255, 246, 191, 0.58);
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(-38deg);
+}
+
+.sound-toggle.is-muted::after {
+  opacity: 1;
+}
+
+.start-sound-toggle {
+  position: absolute;
+  right: 16px;
+  top: max(18px, env(safe-area-inset-top));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 36px;
+  border: 2px solid rgba(106, 67, 24, 0.24);
+  border-radius: 999px;
+  color: #7a4d1f;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), transparent 44%),
+    linear-gradient(180deg, #fff7b5, #f7c15f);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.46),
+    0 5px 0 rgba(132, 78, 26, 0.2),
+    0 8px 18px rgba(70, 45, 18, 0.16);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.start-sound-toggle:active {
+  transform: translateY(2px);
+}
+
 .hud,
 .pasture-wrap,
 .tool-row {
@@ -366,10 +425,10 @@ body.is-starting .tool-row {
 /* HUD */
 .hud {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr) 102px;
+  grid-template-columns: 122px minmax(0, 1fr) 102px;
   grid-template-rows: 42px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 52px;
 }
 
@@ -378,7 +437,7 @@ body.is-starting .tool-row {
   grid-row: 1 / 2;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .icon-button,
@@ -398,7 +457,7 @@ body.is-starting .tool-row {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 41px;
+  width: 37px;
   height: 39px;
   border-radius: 14px;
   color: #7a4d1f;
@@ -409,6 +468,10 @@ body.is-starting .tool-row {
   font-weight: 900;
   line-height: 1;
   cursor: pointer;
+}
+
+.game-sound-toggle {
+  font-size: 23px;
 }
 
 .status-pill,
@@ -2825,7 +2888,7 @@ body.is-starting .tool-row {
 /* 移动端适配 */
 @media (max-height: 720px) {
   :root {
-    --cell: min(calc((100vw - 118px) / 12), calc((100dvh - 276px) / 19), 21px);
+    --cell: min(calc((100vw - 118px) / 10), calc((100dvh - 276px) / 16), 25.2px);
   }
 
   .game-shell {
@@ -2847,6 +2910,35 @@ body.is-starting .tool-row {
 }
 
 @media (max-width: 390px) {
+  .hud {
+    grid-template-columns: 112px minmax(0, 1fr) 92px;
+  }
+
+  .hud-actions {
+    gap: 4px;
+  }
+
+  .icon-button {
+    width: 34px;
+    height: 36px;
+    border-radius: 13px;
+    font-size: 24px;
+  }
+
+  .game-sound-toggle {
+    font-size: 21px;
+  }
+
+  .level-select-wrap {
+    width: 112px;
+  }
+
+  .score-pill {
+    min-width: 92px;
+    padding-inline: 9px;
+    font-size: 14px;
+  }
+
   .tool-row {
     gap: 9px;
   }
