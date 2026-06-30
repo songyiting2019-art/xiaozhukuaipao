@@ -5,6 +5,13 @@ const DIRS = {
   left: { dx: -1, dy: 0, rot: "270deg", label: "左" },
 };
 
+const OPPOSITE_DIRS = {
+  up: "down",
+  right: "left",
+  down: "up",
+  left: "right",
+};
+
 const ANIMAL_TYPES = {
   pig: {
     className: "animal-pig",
@@ -53,6 +60,7 @@ const SCORE_RULES = {
 
 const TOOL_LIMITS = {
   remove: 1,
+  flip: 1,
   stimulant: 1,
 };
 
@@ -81,6 +89,16 @@ const COLLECTION_ITEMS = {
     icon: "!",
     image: "./assets/optimized/firecracker-prop-96.png",
   },
+  flip: {
+    name: "翻转",
+    type: "tool",
+    typeName: "道具",
+    description: "让一只小猪前后对调。",
+    guide: "选择一只小猪，让它前后对调。",
+    costText: "每关1次",
+    requiredStars: 10,
+    icon: "↺",
+  },
   stimulant: {
     name: "兴奋剂",
     type: "tool",
@@ -88,19 +106,8 @@ const COLLECTION_ITEMS = {
     description: "小猪变得兴奋，可以进行一次跨越。",
     guide: "选择一只小猪，让它兴奋起来，向前跨越一次。",
     costText: "每关1次",
-    requiredStars: 10,
-    icon: "⚡",
-  },
-  mysteryTool15: {
-    name: "神秘道具",
-    type: "tool",
-    typeName: "道具",
-    description: "后续配置新道具。",
-    guide: "这里会放后续新增的道具规则。",
-    costText: "待配置",
     requiredStars: 15,
-    icon: "?",
-    placeholder: true,
+    icon: "⚡",
   },
   mysteryTool20: {
     name: "神秘道具",
@@ -189,7 +196,7 @@ const UNLOCKED_COLLECTION_STORAGE_KEY = "pigEscapeUnlockedCollectionV2";
 const ENABLED_ABILITIES_STORAGE_KEY = "pigEscapeEnabledAbilitiesV2";
 const EQUIPPED_TOOLS_STORAGE_KEY = "pigEscapeEquippedToolsV2";
 const DEFAULT_LEVEL_INDEX = 0;
-const MAX_EQUIPPED_TOOLS = 2;
+const MAX_EQUIPPED_TOOLS = 3;
 
 const LEVELS = [
   {
@@ -1796,6 +1803,7 @@ const state = {
   shouldPlayAnimalDrop: false,
   toolUses: {
     remove: 0,
+    flip: 0,
     stimulant: 0,
   },
   scoreBurstToken: 0,
@@ -1825,6 +1833,7 @@ const nextLevelBtn = document.querySelector("#nextLevelBtn");
 const homeBtn = document.querySelector("#homeBtn");
 const restartBtn = document.querySelector("#restartBtn");
 const removeTool = document.querySelector("#removeTool");
+const flipTool = document.querySelector("#flipTool");
 const stimulantTool = document.querySelector("#stimulantTool");
 const firecrackerTool = document.querySelector("#firecrackerTool");
 const firecrackerEffect = document.querySelector("#firecrackerEffect");
@@ -1869,6 +1878,7 @@ function initLevel(index = 0) {
   state.firecrackerRunning = false;
   state.toolUses = {
     remove: 0,
+    flip: 0,
     stimulant: 0,
   };
   state.animals = level.animals.map((animal, animalIndex) => ({
@@ -1996,6 +2006,17 @@ function handleAnimalClick(id, element) {
     return;
   }
 
+  if (state.toolMode === "flip") {
+    if (!canUseTool("flip")) {
+      setToolMode(null);
+      return;
+    }
+    state.toolUses.flip += 1;
+    flipAnimal(animal, element);
+    setToolMode(null);
+    return;
+  }
+
   if (state.toolMode === "stimulant") {
     if (!canUseTool("stimulant")) {
       setToolMode(null);
@@ -2065,6 +2086,39 @@ function tryMove(animal, element) {
   }
 
   exitAnimal(animal, element);
+}
+
+function flipAnimal(animal, element) {
+  const oldDir = DIRS[animal.dir];
+  const nextDir = OPPOSITE_DIRS[animal.dir];
+  if (!oldDir || !nextDir) return;
+
+  const center = getAnimalCenter(animal);
+  animal.busy = true;
+  element.classList.remove("is-dropping", "is-flipping", "is-pressing", "is-activated");
+  element.style.removeProperty("--drop-delay");
+  element.style.setProperty("--x", center.x);
+  element.style.setProperty("--y", center.y);
+  element.style.setProperty("--z", Math.round(center.y * 2 + 10));
+  void element.offsetWidth;
+  element.classList.add("is-flipping");
+
+  window.setTimeout(() => {
+    if (!animal.active) return;
+    animal.x -= oldDir.dx;
+    animal.y -= oldDir.dy;
+    animal.dir = nextDir;
+    const flippedCenter = getAnimalCenter(animal);
+    element.style.setProperty("--x", flippedCenter.x);
+    element.style.setProperty("--y", flippedCenter.y);
+    element.style.setProperty("--z", Math.round(flippedCenter.y * 2 + 10));
+    element.setAttribute("aria-label", `小猪朝${DIRS[animal.dir].label}`);
+  }, 150);
+
+  window.setTimeout(() => {
+    animal.busy = false;
+    element.classList.remove("is-flipping");
+  }, 320);
 }
 
 function useStimulantOnAnimal(animal, element) {
@@ -3135,12 +3189,22 @@ function loadEquippedTools() {
   const fallback = new Set(getStarterToolKeys());
   try {
     const saved = JSON.parse(window.localStorage.getItem(EQUIPPED_TOOLS_STORAGE_KEY));
-    if (!Array.isArray(saved)) return fallback;
     const unlocked = loadUnlockedCollection();
-    const equipped = saved
-      .filter((key) => COLLECTION_ITEMS[key]?.type === "tool" && unlocked.has(key))
-      .slice(0, MAX_EQUIPPED_TOOLS);
-    return new Set(equipped.length > 0 ? equipped : getStarterToolKeys());
+    const equipped = Array.isArray(saved)
+      ? saved.filter((key) => (
+        COLLECTION_ITEMS[key]?.type === "tool"
+        && !COLLECTION_ITEMS[key]?.placeholder
+        && unlocked.has(key)
+      ))
+      : getStarterToolKeys();
+
+    Object.entries(COLLECTION_ITEMS).forEach(([key, item]) => {
+      if (equipped.length >= MAX_EQUIPPED_TOOLS) return;
+      if (item.type !== "tool" || item.placeholder || !unlocked.has(key)) return;
+      if (!equipped.includes(key)) equipped.push(key);
+    });
+
+    return new Set(equipped.slice(0, MAX_EQUIPPED_TOOLS));
   } catch {
     return fallback;
   }
@@ -3374,6 +3438,16 @@ removeTool.addEventListener("click", () => {
   setToolMode(state.toolMode === "remove" ? null : "remove");
 });
 
+flipTool.addEventListener("click", () => {
+  if (state.locked) return;
+  if (!isToolUsable("flip")) return;
+  if (!hasToolUsesLeft("flip")) {
+    setToolMode(null);
+    return;
+  }
+  setToolMode(state.toolMode === "flip" ? null : "flip");
+});
+
 stimulantTool.addEventListener("click", () => {
   if (state.locked) return;
   if (!isToolUsable("stimulant")) return;
@@ -3503,6 +3577,20 @@ function updateToolState() {
   );
   removeTool.querySelector(".tool-count").textContent =
     `${getToolUsesLeft("remove")}次`;
+  flipTool.hidden = !isToolUsable("flip");
+  flipTool.disabled =
+    state.locked || !isToolUsable("flip") || !hasToolUsesLeft("flip");
+  flipTool.classList.toggle("is-selected", state.toolMode === "flip");
+  flipTool.classList.toggle(
+    "is-locked",
+    !isToolUsable("flip") || !hasToolUsesLeft("flip"),
+  );
+  flipTool.setAttribute(
+    "aria-pressed",
+    state.toolMode === "flip" ? "true" : "false",
+  );
+  flipTool.querySelector(".tool-count").textContent =
+    `${getToolUsesLeft("flip")}次`;
   stimulantTool.hidden = !isToolUsable("stimulant");
   stimulantTool.disabled =
     state.locked || !isToolUsable("stimulant") || !hasToolUsesLeft("stimulant");
@@ -3531,6 +3619,7 @@ function updateToolState() {
 
 function canUseTool(tool) {
   if (tool === "remove") return isToolUsable("remove") && hasToolUsesLeft("remove");
+  if (tool === "flip") return isToolUsable("flip") && hasToolUsesLeft("flip");
   if (tool === "stimulant") return isToolUsable("stimulant") && hasToolUsesLeft("stimulant");
   return false;
 }
@@ -3645,7 +3734,7 @@ function renderToolUnlockModal() {
     const starsLeft = Math.max(0, tool.requiredStars - totalStars);
     const active = isCollectionItemActive(key);
     const stateText = getCollectionStateText(key, unlocked);
-    const titleText = unlocked || ready ? tool.name : `${tool.requiredStars}★解锁`;
+    const titleText = unlocked || ready ? tool.name : "待解锁";
     const iconMarkup = unlocked ? getCollectionIconMarkup(tool) : ready ? "★" : "?";
     const lockedLabel = ready ? "可解锁" : `${tool.requiredStars}★解锁`;
     return `
@@ -3794,8 +3883,8 @@ function renderCompleteUnlockNotice(summary = getReadyUnlockSummary()) {
   if (!completeUnlockNotice) return;
   const hasReadyUnlock = summary.count > 0;
   completeUnlockNotice.hidden = !hasReadyUnlock;
-  completeUnlockNotice.textContent = hasReadyUnlock
-    ? `${summary.text}，去收藏馆`
+  completeUnlockNotice.innerHTML = hasReadyUnlock
+    ? `<strong>${summary.text}，去收藏馆领取</strong><small>道具和皮肤可在收藏馆选择使用，能力解锁后默认启用。</small>`
     : "";
 }
 
@@ -3880,6 +3969,7 @@ function unlockCollectionItem(key) {
   if (!canUnlockCollectionItem(key)) return;
   const item = COLLECTION_ITEMS[key];
   state.unlockedCollection.add(key);
+  const autoEquipped = equipUnlockedToolIfRoom(key, item);
   if (item?.type === "ability") {
     state.enabledAbilities.add(key);
     saveEnabledAbilities();
@@ -3890,8 +3980,17 @@ function unlockCollectionItem(key) {
   updateToolState();
   triggerCollectionUnlockAnimation(key);
   window.setTimeout(() => {
-    showCollectionReveal(key);
+    showCollectionReveal(key, { equipped: autoEquipped });
   }, 420);
+}
+
+function equipUnlockedToolIfRoom(key, item) {
+  if (item?.type !== "tool") return false;
+  if (state.equippedTools.has(key)) return true;
+  if (state.equippedTools.size >= MAX_EQUIPPED_TOOLS) return false;
+  state.equippedTools.add(key);
+  saveEquippedTools();
+  return true;
 }
 
 function toggleEquippedTool(key) {
@@ -3930,14 +4029,16 @@ function triggerCollectionUnlockAnimation(key) {
   });
 }
 
-function showCollectionReveal(key) {
+function showCollectionReveal(key, options = {}) {
   const item = COLLECTION_ITEMS[key];
   if (!item) return;
   hideCollectionReveal();
   collectionRevealIcon.innerHTML = getCollectionIconMarkup(item);
   collectionRevealIcon.classList.toggle("has-image", Boolean(item.image));
   collectionRevealName.textContent = item.name;
-  collectionRevealMeta.textContent = `获得${item.typeName}`;
+  collectionRevealMeta.textContent = item.type === "ability" && state.enabledAbilities.has(key)
+    ? "已启用"
+    : options.equipped ? "已携带" : `获得${item.typeName}`;
   collectionReveal.hidden = false;
   collectionReveal.classList.remove("is-playing");
   void collectionReveal.offsetWidth;
