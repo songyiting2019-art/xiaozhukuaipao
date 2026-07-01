@@ -5,6 +5,7 @@ const {
   getFootprint,
   getAnimalCenter,
   isInsideBoardCell,
+  isPlayableCell,
   isAnimalOnPlayableCells,
   getCellKey,
   isSameAnimal,
@@ -51,6 +52,8 @@ const TOOL_LIMITS = {
   remove: 1,
   flip: 1,
   stimulant: 1,
+  sideDash: 1,
+  leadCharge: 1,
 };
 
 const COLLECTION_UNLOCK_STEP = 5;
@@ -98,27 +101,25 @@ const COLLECTION_ITEMS = {
     requiredStars: 15,
     icon: "⚡",
   },
-  mysteryTool20: {
-    name: "神秘道具",
+  sideDash: {
+    name: "横冲直撞",
     type: "tool",
     typeName: "道具",
-    description: "后续配置新道具。",
-    guide: "这里会放后续新增的道具规则。",
-    costText: "待配置",
+    description: "让小猪从侧向空路横冲出去。",
+    guide: "选择一只小猪，如果它侧向对应的两条占格通道没有阻挡，就会横冲出草地。",
+    costText: "每关1次",
     requiredStars: 20,
-    icon: "?",
-    placeholder: true,
+    icon: "↔",
   },
-  mysteryTool25: {
-    name: "神秘道具",
+  leadCharge: {
+    name: "带头冲锋",
     type: "tool",
     typeName: "道具",
-    description: "后续配置新道具。",
-    guide: "这里会放后续新增的道具规则。",
-    costText: "待配置",
+    description: "一只小猪带着贴身伙伴同向冲出。",
+    guide: "选择一只本来能跑出去的小猪，和它紧贴的小猪会一起朝它的方向冲出。被带出去的小猪前方不能有阻挡。",
+    costText: "每关1次",
     requiredStars: 25,
-    icon: "?",
-    placeholder: true,
+    icon: "▶",
   },
   mysteryTool30: {
     name: "神秘道具",
@@ -185,17 +186,20 @@ const AUDIO_FILES = {
   buttonTap: "sfx-button-tap-light-v3.mp3",
   buttonBack: "sfx-button-back-soft-v1.mp3",
   collectionSelect: "sfx-collection-select-soft-v1.mp3",
-  comboPop: "sfx-combo-pop-v1.mp3",
   firecrackerPop: "sfx-firecracker-pop-v1.mp3",
   levelCompleteStars: "sfx-level-complete-stars-v1.mp3",
-  pigExitGate: "sfx-pig-exit-gate-v1.mp3",
-  pigHitDizzy: "sfx-pig-hit-dizzy-v1.mp3",
+  pigExitGate: "sfx-pig-exit-gate-zip-v2c.mp3",
+  pigCrashGruntA: "sfx-real-pig-grunt-squeal-v1b.mp3",
+  pigCrashGruntB: "sfx-real-pig-double-snort-v1c.mp3",
+  pigHitDizzy: "sfx-pig-hit-bump-v2.mp3",
   pigRunGrass: "sfx-pig-run-grass-v1.mp3",
+  pigSkillLeadCharge: "sfx-pig-skill-lead-charge-v1.mp3",
+  pigSkillSideDash: "sfx-pig-skill-side-dash-v1.mp3",
   pigTapSnort: "sfx-pig-tap-tiny-oink-v2b.mp3",
   toolFlipWoosh: "sfx-tool-flip-woosh-v1.mp3",
-  toolRemovePop: "sfx-tool-remove-pop-v1.mp3",
+  toolRemovePop: "sfx-tool-remove-chiu-soft-v5b.mp3",
   toolStimulantZap: "sfx-tool-stimulant-zap-v1.mp3",
-  unlockSparkle: "sfx-unlock-sparkle-v1.mp3",
+  unlockSparkle: "sfx-unlock-bounce-pop-v2.mp3",
 };
 
 const AUDIO_VOLUMES = {
@@ -204,27 +208,41 @@ const AUDIO_VOLUMES = {
   buttonTap: 0.2,
   buttonBack: 0.34,
   collectionSelect: 0.3,
-  comboPop: 0.28,
   firecrackerPop: 0.48,
   levelCompleteStars: 0.44,
   pigExitGate: 0.32,
-  pigHitDizzy: 0.38,
+  pigCrashGruntA: 0.24,
+  pigCrashGruntB: 0.22,
+  pigHitDizzy: 0.36,
   pigRunGrass: 0.22,
+  pigSkillLeadCharge: 0.24,
+  pigSkillSideDash: 0.22,
   pigTapSnort: 0.24,
   toolFlipWoosh: 0.34,
   toolRemovePop: 0.34,
   toolStimulantZap: 0.38,
-  unlockSparkle: 0.45,
+  unlockSparkle: 0.38,
 };
 
 const AUDIO_THROTTLE_MS = {
   buttonTap: 46,
   collectionSelect: 70,
-  comboPop: 95,
-  pigExitGate: 70,
-  pigRunGrass: 92,
+  pigCrashGruntA: 240,
+  pigCrashGruntB: 240,
+  pigExitGate: 140,
+  pigHitDizzy: 160,
+  pigRunGrass: 180,
+  pigSkillLeadCharge: 360,
+  pigSkillSideDash: 360,
   pigTapSnort: 70,
+  toolFlipWoosh: 120,
+  toolRemovePop: 140,
+  toolStimulantZap: 160,
+  firecrackerPop: 500,
+  levelCompleteStars: 900,
+  unlockSparkle: 360,
 };
+const MAX_ACTIVE_SFX = 8;
 
 const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV3Board10x16";
 const FIRECRACKER_POSITION_KEY = "pigEscapeFirecrackerPositionV1";
@@ -247,8 +265,8 @@ const DEV_TOOL_TEST_STATE = {
     4: { stars: 3, score: 3000 },
     5: { stars: 3, score: 3000 },
   },
-  unlockedCollection: ["remove", "firecracker", "flip", "stimulant"],
-  equippedTools: ["remove", "flip", "stimulant"],
+  unlockedCollection: ["remove", "firecracker", "flip", "stimulant", "sideDash", "leadCharge"],
+  equippedTools: ["remove", "flip", "stimulant", "sideDash", "leadCharge"],
   enabledAbilities: ["firecracker"],
 };
 
@@ -308,6 +326,7 @@ const state = {
   audioUnlocked: false,
   currentBgm: null,
   lastAudioAt: {},
+  activeSfxCount: 0,
   levelCompleteSoundPlayed: false,
 };
 
@@ -337,6 +356,8 @@ const restartBtn = document.querySelector("#restartBtn");
 const removeTool = document.querySelector("#removeTool");
 const flipTool = document.querySelector("#flipTool");
 const stimulantTool = document.querySelector("#stimulantTool");
+const sideDashTool = document.querySelector("#sideDashTool");
+const leadChargeTool = document.querySelector("#leadChargeTool");
 const firecrackerTool = document.querySelector("#firecrackerTool");
 const firecrackerEffect = document.querySelector("#firecrackerEffect");
 const startGameBtn = document.querySelector("#startGameBtn");
@@ -370,7 +391,7 @@ function createAudioBank() {
   return Object.fromEntries(
     Object.entries(AUDIO_FILES).map(([key, file]) => {
       const audio = new Audio(`${AUDIO_BASE_PATH}${file}`);
-      audio.preload = key.startsWith("bgm") ? "metadata" : "auto";
+      audio.preload = key.startsWith("bgm") ? "metadata" : "none";
       audio.volume = AUDIO_VOLUMES[key] ?? 0.35;
       audio.loop = key.startsWith("bgm");
       return [key, audio];
@@ -394,17 +415,10 @@ function saveAudioEnabled() {
   }
 }
 
-function loadAudioElements() {
-  Object.values(audioBank).forEach((audio) => {
-    audio.load();
-  });
-}
-
 function unlockAudio() {
   if (state.audioUnlocked) return;
   state.audioUnlocked = true;
   if (!state.audioEnabled) return;
-  loadAudioElements();
   syncBackgroundMusic();
 }
 
@@ -416,15 +430,33 @@ function playSound(key, options = {}) {
   const now = performance.now();
   const throttleMs = options.throttleMs ?? AUDIO_THROTTLE_MS[key] ?? 0;
   if (throttleMs > 0 && now - (state.lastAudioAt[key] ?? 0) < throttleMs) return;
+  if (!key.startsWith("bgm") && state.activeSfxCount >= MAX_ACTIVE_SFX) return;
   state.lastAudioAt[key] = now;
 
   const audio = source.cloneNode();
   audio.volume = Math.max(0, Math.min(1, options.volume ?? AUDIO_VOLUMES[key] ?? source.volume));
+  state.activeSfxCount += 1;
+  const releaseAudio = () => {
+    if (audio.dataset.released === "1") return;
+    audio.dataset.released = "1";
+    state.activeSfxCount = Math.max(0, state.activeSfxCount - 1);
+  };
+  audio.addEventListener("ended", releaseAudio, { once: true });
   audio.play().catch(() => {});
   window.setTimeout(() => {
     audio.pause();
     audio.src = "";
+    releaseAudio();
   }, Math.max(900, (options.durationMs ?? 0) + 1200));
+}
+
+function playCrashGrunt() {
+  const crashGrunts = ["pigCrashGruntA", "pigCrashGruntB"];
+  const key = crashGrunts[Math.floor(Math.random() * crashGrunts.length)];
+  playSound(key, {
+    throttleMs: 120,
+    volume: 0.22,
+  });
 }
 
 function switchBackgroundMusic(key) {
@@ -486,7 +518,6 @@ function setAudioEnabled(enabled) {
     return;
   }
   if (state.audioUnlocked) {
-    loadAudioElements();
     syncBackgroundMusic();
     playSound("buttonTap", { throttleMs: 0 });
   }
@@ -547,6 +578,8 @@ function initLevel(index = 0) {
     remove: 0,
     flip: 0,
     stimulant: 0,
+    sideDash: 0,
+    leadCharge: 0,
   };
   state.animals = level.animals.map((animal, animalIndex) => ({
     ...animal,
@@ -695,6 +728,34 @@ function handleAnimalClick(id, element) {
     return;
   }
 
+  if (state.toolMode === "sideDash") {
+    if (!canUseTool("sideDash")) {
+      setToolMode(null);
+      return;
+    }
+    if (!useSideDashOnAnimal(animal, element)) {
+      setToolMode(null);
+      return;
+    }
+    state.toolUses.sideDash += 1;
+    setToolMode(null);
+    return;
+  }
+
+  if (state.toolMode === "leadCharge") {
+    if (!canUseTool("leadCharge")) {
+      setToolMode(null);
+      return;
+    }
+    if (!useLeadChargeOnAnimal(animal, element)) {
+      setToolMode(null);
+      return;
+    }
+    state.toolUses.leadCharge += 1;
+    setToolMode(null);
+    return;
+  }
+
   tryMove(animal, element);
 }
 
@@ -817,6 +878,260 @@ function useStimulantOnAnimal(animal, element) {
   }
 
   stimulantDirectExitAnimal(animal, element);
+}
+
+function useSideDashOnAnimal(animal, element) {
+  const plan = getSideDashPlan(animal);
+  if (!plan) return false;
+  sideDashExitAnimal(animal, element, plan);
+  return true;
+}
+
+function getSideDashPlan(animal) {
+  const currentDir = DIRS[animal.dir];
+  if (!currentDir) return null;
+
+  const occupiedCells = getActiveCellOccupancy(state.animals, animal);
+  const sideDirections = currentDir.dx !== 0
+    ? ["up", "down"]
+    : ["left", "right"];
+  const plans = sideDirections
+    .map((dirKey) => getSideDashPlanForDirection(animal, dirKey, occupiedCells))
+    .filter(Boolean)
+    .sort((a, b) => a.cells - b.cells);
+
+  return plans[0] ?? null;
+}
+
+function getSideDashPlanForDirection(animal, dirKey, occupiedCells) {
+  const dir = DIRS[dirKey];
+  const footprint = getFootprint(animal);
+  const maxSteps = BOARD.cols + BOARD.rows + 2;
+
+  for (let step = 1; step <= maxSteps; step += 1) {
+    const cells = footprint.map((cell) => ({
+      x: cell.x + dir.dx * step,
+      y: cell.y + dir.dy * step,
+    }));
+    const isExiting = cells.some((cell) => !isPlayableCell(cell.x, cell.y));
+    const blocked = cells.some((cell) =>
+      isPlayableCell(cell.x, cell.y) && occupiedCells.has(getCellKey(cell)),
+    );
+
+    if (blocked) return null;
+    if (isExiting) return { dirKey, cells: step };
+  }
+
+  return null;
+}
+
+function sideDashExitAnimal(animal, element, plan) {
+  const dir = DIRS[plan.dirKey];
+  const animalType = getAnimalType(animal);
+  const center = getAnimalCenter(animal);
+  const pathEntry = getPathEntryPoint(center, plan.dirKey);
+  const msPerCell = getSideDashMoveMsPerCell(animalType);
+  const moveMs = getMoveDuration(animalType, plan.cells, msPerCell);
+  const faceTurnMs = 720;
+  const turnMs = 960;
+  const runToken = state.runToken;
+
+  animal.busy = true;
+  element.classList.remove("is-dropping");
+  element.style.removeProperty("--drop-delay");
+  element.style.setProperty("--side-turn-ms", `${turnMs}ms`);
+  element.classList.add(
+    "is-leaving",
+    "is-side-dashing",
+    "is-side-turning",
+    `is-side-dash-${plan.dirKey}`,
+  );
+
+  animal.active = false;
+  state.cleared += 1;
+  addExitScore(center);
+  updateHud();
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken) return;
+    element.setAttribute("aria-label", `小猪朝${DIRS[plan.dirKey].label}`);
+    element.classList.add("is-side-turned");
+  }, faceTurnMs);
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken) return;
+    element.classList.remove("is-side-turning");
+    element.classList.add("is-running");
+    setMotion(element, moveMs, MOVE_EASING.run);
+    setRunOffset(element, dir, plan.cells);
+    playSound("pigSkillSideDash");
+    playSound("toolFlipWoosh");
+    playSound("pigRunGrass");
+    spawnRunTrail(center, dir, plan.cells, animalType, msPerCell);
+  }, turnMs);
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken) return;
+    const runner = createPathRunner(element, pathEntry, plan.dirKey);
+    element.remove();
+    runPathToGate(runner, pathEntry, plan.dirKey, animalType, runToken);
+  }, turnMs + moveMs);
+}
+
+function useLeadChargeOnAnimal(leader, leaderElement) {
+  const plan = getLeadChargePlan(leader);
+  if (!plan) return false;
+  const targets = plan.animals
+    .map((animal) => ({
+      animal,
+      element: isSameAnimal(animal, leader) ? leaderElement : getAnimalElement(animal),
+    }))
+    .filter((target) => target.element);
+
+  leadChargeExitAnimals(targets, plan.dirKey);
+  return true;
+}
+
+function getLeadChargePlan(leader) {
+  if (findBlocker(leader)) return null;
+
+  const dirKey = leader.dir;
+  const leaderId = leader.id;
+  const adjacentAnimals = state.animals.filter((animal) => (
+    animal.active
+    && !animal.busy
+    && !isSameAnimal(animal, leader)
+    && areAnimalsTouching(leader, animal)
+  ));
+  const candidateAnimals = [leader, ...adjacentAnimals];
+  let movingAnimals = candidateAnimals;
+
+  for (let pass = 0; pass < candidateAnimals.length; pass += 1) {
+    const movingIds = new Set(movingAnimals.map((animal) => animal.id));
+    const nextMovingAnimals = candidateAnimals.filter((animal) => (
+      animal.id === leaderId || canAnimalForceExitInDirection(animal, dirKey, movingIds)
+    ));
+    if (nextMovingAnimals.length === movingAnimals.length) {
+      return nextMovingAnimals.length > 1
+        ? { dirKey, animals: nextMovingAnimals }
+        : null;
+    }
+    movingAnimals = nextMovingAnimals;
+  }
+
+  return movingAnimals.length > 1 && movingAnimals.some((animal) => animal.id === leaderId)
+    ? { dirKey, animals: movingAnimals }
+    : null;
+}
+
+function areAnimalsTouching(first, second) {
+  const firstCells = getFootprint(first);
+  const secondCells = getFootprint(second);
+  return firstCells.some((firstCell) =>
+    secondCells.some((secondCell) =>
+      Math.abs(firstCell.x - secondCell.x) + Math.abs(firstCell.y - secondCell.y) === 1,
+    ),
+  );
+}
+
+function canAnimalForceExitInDirection(animal, dirKey, movingIds) {
+  const dir = DIRS[dirKey];
+  const footprint = getFootprint(animal);
+  const occupiedCells = getMovingExcludedOccupancy(movingIds);
+  const maxSteps = BOARD.cols + BOARD.rows + 2;
+
+  for (let step = 1; step <= maxSteps; step += 1) {
+    const cells = footprint.map((cell) => ({
+      x: cell.x + dir.dx * step,
+      y: cell.y + dir.dy * step,
+    }));
+    const isExiting = cells.some((cell) => !isPlayableCell(cell.x, cell.y));
+    const blocked = cells.some((cell) =>
+      isPlayableCell(cell.x, cell.y) && occupiedCells.has(getCellKey(cell)),
+    );
+
+    if (blocked) return false;
+    if (isExiting) return true;
+  }
+
+  return false;
+}
+
+function getMovingExcludedOccupancy(movingIds) {
+  const occupiedCells = new Set();
+  state.animals.forEach((animal) => {
+    if (!animal.active || movingIds.has(animal.id)) return;
+    getFootprint(animal).forEach((cell) => occupiedCells.add(getCellKey(cell)));
+  });
+  return occupiedCells;
+}
+
+function leadChargeExitAnimals(targets, dirKey) {
+  const dir = DIRS[dirKey];
+  const animalType = getAnimalType(targets[0].animal);
+  const msPerCell = getLeadChargeMoveMsPerCell(animalType);
+
+  playSound("pigSkillLeadCharge");
+  playSound("toolFlipWoosh");
+  targets.forEach(({ animal, element }, index) => {
+    forceExitAnimalInDirection(animal, element, dirKey, dir, msPerCell, index);
+  });
+}
+
+function forceExitAnimalInDirection(animal, element, dirKey, dir, msPerCell, chargeIndex = 0) {
+  const animalType = getAnimalType(animal);
+  const center = getAnimalCenter(animal);
+  const pathEntry = getPathEntryPoint(center, dirKey);
+  const cells = getForceExitTravelCells(animal, dirKey);
+  const moveMs = getMoveDuration(animalType, cells, msPerCell);
+  const runToken = state.runToken;
+  const chargeDelay = Math.min(chargeIndex * 70, 240);
+  const chargeStartMs = 680 + chargeDelay;
+
+  animal.busy = true;
+  element.classList.remove("is-dropping");
+  element.style.removeProperty("--drop-delay");
+  element.setAttribute("aria-label", `小猪朝${DIRS[dirKey].label}`);
+  element.style.setProperty("--charge-delay", `${chargeDelay}ms`);
+  element.classList.add(
+    "is-leaving",
+    "is-lead-charging",
+    chargeIndex === 0 ? "is-charge-leader" : "is-charge-follower",
+  );
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken || !element.isConnected) return;
+    element.classList.add("is-running");
+    setMotion(element, moveMs, MOVE_EASING.run);
+    setRunOffset(element, dir, cells);
+    playSound("pigRunGrass");
+    spawnRunTrail(center, dir, cells, animalType, msPerCell);
+  }, chargeStartMs);
+
+  animal.active = false;
+  state.cleared += 1;
+  addExitScore(center);
+  updateHud();
+
+  window.setTimeout(() => {
+    if (runToken !== state.runToken) return;
+    const runner = createPathRunner(element, pathEntry, dirKey);
+    element.remove();
+    runPathToGate(runner, pathEntry, dirKey, animalType, runToken);
+  }, chargeStartMs + moveMs);
+}
+
+function getForceExitTravelCells(animal, dirKey) {
+  const dir = DIRS[dirKey];
+  const footprint = getFootprint(animal);
+  for (let step = 1; step <= BOARD.cols + BOARD.rows + 2; step += 1) {
+    const cells = footprint.map((cell) => ({
+      x: cell.x + dir.dx * step,
+      y: cell.y + dir.dy * step,
+    }));
+    if (cells.some((cell) => !isPlayableCell(cell.x, cell.y))) return step;
+  }
+  return 0;
 }
 
 function getStimulantPlan(animal) {
@@ -1108,6 +1423,16 @@ function createPathRunner(sourceElement, start, dirKey) {
     "is-jumping",
     "is-jump-rising",
     "is-jump-falling",
+    "is-side-dashing",
+    "is-side-turning",
+    "is-side-turned",
+    "is-side-dash-up",
+    "is-side-dash-right",
+    "is-side-dash-down",
+    "is-side-dash-left",
+    "is-lead-charging",
+    "is-charge-leader",
+    "is-charge-follower",
   );
   runner.classList.add("path-runner", "is-running");
   runner.type = "button";
@@ -1320,6 +1645,7 @@ function crashAnimal(animal, element, blocker, msPerCell = null) {
     animal.stunned = true;
     animal.busy = false;
     settleCrashedAnimalElement(animal, element);
+    playCrashGrunt();
 
     window.setTimeout(() => {
       animal.stunned = false;
@@ -1397,17 +1723,53 @@ async function useFirecracker() {
 }
 
 function findFirecrackerEscapableAnimals() {
-  return state.animals
-    .filter((candidate) => (
+  const escapeTargets = [];
+
+  Object.keys(DIRS).forEach((dirKey) => {
+    const plannedExitIds = new Set();
+    const candidates = state.animals.filter((candidate) => (
       candidate.active
       && !candidate.busy
-      && !findBlocker(candidate)
+      && candidate.dir === dirKey
       && getAnimalElement(candidate)
-    ))
-    .map((animal) => ({
-      animal,
-      element: getAnimalElement(animal),
-    }));
+    ));
+
+    let hasNewEscape = true;
+    while (hasNewEscape) {
+      hasNewEscape = false;
+      for (const animal of candidates) {
+        if (plannedExitIds.has(animal.id)) continue;
+        if (findBlockerWithPlannedFirecrackerExits(animal, plannedExitIds)) continue;
+
+        plannedExitIds.add(animal.id);
+        escapeTargets.push({
+          animal,
+          element: getAnimalElement(animal),
+        });
+        hasNewEscape = true;
+      }
+    }
+  });
+
+  return escapeTargets;
+}
+
+function findBlockerWithPlannedFirecrackerExits(animal, plannedExitIds) {
+  return findBlockerInAnimals(
+    state.animals,
+    animal,
+    getFirecrackerPlannedOccupancy(animal, plannedExitIds),
+  );
+}
+
+function getFirecrackerPlannedOccupancy(excludedAnimal, plannedExitIds) {
+  const occupiedCells = new Set();
+  state.animals.forEach((animal) => {
+    if (!animal.active || isSameAnimal(animal, excludedAnimal)) return;
+    if (plannedExitIds.has(animal.id)) return;
+    getFootprint(animal).forEach((cell) => occupiedCells.add(getCellKey(cell)));
+  });
+  return occupiedCells;
 }
 
 function playFirecrackerEffect() {
@@ -1524,6 +1886,14 @@ function getFirecrackerMoveMsPerCell(animalType) {
   return Math.max(38, Math.round(animalType.moveMsPerCell * FIRECRACKER_MOVE_MULTIPLIER));
 }
 
+function getSideDashMoveMsPerCell(animalType) {
+  return Math.max(42, Math.round(animalType.moveMsPerCell * 0.62));
+}
+
+function getLeadChargeMoveMsPerCell(animalType) {
+  return Math.max(44, Math.round(animalType.moveMsPerCell * 0.66));
+}
+
 function setMotion(element, durationMs, easing) {
   element.style.setProperty("--move-ms", `${durationMs}ms`);
   element.style.setProperty("--move-ease", easing);
@@ -1598,7 +1968,6 @@ function resetCombo() {
 function showComboBurst(combo, gainedScore = getExitScoreForCombo(combo), scorePoint = null) {
   const burstToken = state.scoreBurstToken + 1;
   state.scoreBurstToken = burstToken;
-  playSound("comboPop");
   if (scorePoint) {
     comboBurst.style.setProperty("--score-x", scorePoint.x);
     comboBurst.style.setProperty("--score-y", scorePoint.y - 0.82);
@@ -2146,6 +2515,26 @@ stimulantTool.addEventListener("click", () => {
   setToolMode(state.toolMode === "stimulant" ? null : "stimulant");
 });
 
+sideDashTool.addEventListener("click", () => {
+  if (state.locked) return;
+  if (!isToolUsable("sideDash")) return;
+  if (!hasToolUsesLeft("sideDash")) {
+    setToolMode(null);
+    return;
+  }
+  setToolMode(state.toolMode === "sideDash" ? null : "sideDash");
+});
+
+leadChargeTool.addEventListener("click", () => {
+  if (state.locked) return;
+  if (!isToolUsable("leadCharge")) return;
+  if (!hasToolUsesLeft("leadCharge")) {
+    setToolMode(null);
+    return;
+  }
+  setToolMode(state.toolMode === "leadCharge" ? null : "leadCharge");
+});
+
 firecrackerTool.addEventListener("click", (event) => {
   if (firecrackerTool.dataset.dragged === "true") {
     event.preventDefault();
@@ -2307,6 +2696,34 @@ function updateToolState() {
   );
   stimulantTool.querySelector(".tool-count").textContent =
     `${getToolUsesLeft("stimulant")}次`;
+  sideDashTool.hidden = !isToolUsable("sideDash");
+  sideDashTool.disabled =
+    state.locked || !isToolUsable("sideDash") || !hasToolUsesLeft("sideDash");
+  sideDashTool.classList.toggle("is-selected", state.toolMode === "sideDash");
+  sideDashTool.classList.toggle(
+    "is-locked",
+    !isToolUsable("sideDash") || !hasToolUsesLeft("sideDash"),
+  );
+  sideDashTool.setAttribute(
+    "aria-pressed",
+    state.toolMode === "sideDash" ? "true" : "false",
+  );
+  sideDashTool.querySelector(".tool-count").textContent =
+    `${getToolUsesLeft("sideDash")}次`;
+  leadChargeTool.hidden = !isToolUsable("leadCharge");
+  leadChargeTool.disabled =
+    state.locked || !isToolUsable("leadCharge") || !hasToolUsesLeft("leadCharge");
+  leadChargeTool.classList.toggle("is-selected", state.toolMode === "leadCharge");
+  leadChargeTool.classList.toggle(
+    "is-locked",
+    !isToolUsable("leadCharge") || !hasToolUsesLeft("leadCharge"),
+  );
+  leadChargeTool.setAttribute(
+    "aria-pressed",
+    state.toolMode === "leadCharge" ? "true" : "false",
+  );
+  leadChargeTool.querySelector(".tool-count").textContent =
+    `${getToolUsesLeft("leadCharge")}次`;
   const firecrackerVisible = isAbilityUsable("firecracker");
   firecrackerTool.hidden = !firecrackerVisible;
   firecrackerEffect.hidden = firecrackerEffect.hidden || !firecrackerVisible;
@@ -2323,6 +2740,8 @@ function canUseTool(tool) {
   if (tool === "remove") return isToolUsable("remove") && hasToolUsesLeft("remove");
   if (tool === "flip") return isToolUsable("flip") && hasToolUsesLeft("flip");
   if (tool === "stimulant") return isToolUsable("stimulant") && hasToolUsesLeft("stimulant");
+  if (tool === "sideDash") return isToolUsable("sideDash") && hasToolUsesLeft("sideDash");
+  if (tool === "leadCharge") return isToolUsable("leadCharge") && hasToolUsesLeft("leadCharge");
   return false;
 }
 

@@ -31,16 +31,19 @@ const editorState = {
   dirty: false,
   drag: null,
   source: "official",
+  demo: false,
 };
 
-const DRAFT_STORAGE_KEY = "pigEscapeLevelEditorDraftsV3Board10x16";
+const DRAFT_STORAGE_KEY = "pigEscapeLevelEditorDraftsV4Official10x16";
 const DEPLOYED_LEVELS_STORAGE_KEY = "pigEscapeEditorDeployedLevelsV2Board10x16";
+const SELECTED_LEVEL_STORAGE_KEY = "pigEscapeLevelEditorSelectedLevelV1";
 const GENERATOR_ATTEMPTS = 360;
 const GENERATOR_REPAIR_PASSES = 90;
 
 const boardEl = document.querySelector("#editorBoard");
 const levelSelect = document.querySelector("#editorLevelSelect");
 const generateCountInput = document.querySelector("#editorGenerateCount");
+const generateOpenCountInput = document.querySelector("#editorGenerateOpenCount");
 const statusEl = document.querySelector("#editorLevelStatus");
 const sourceStatusEl = document.querySelector("#editorSourceStatus");
 const generateCurrentBtn = document.querySelector("#editorGenerateCurrent");
@@ -52,7 +55,7 @@ const deployOfficialBtn = document.querySelector("#editorDeployOfficial");
 const clearLevelBtn = document.querySelector("#editorClearLevel");
 const exportBtn = document.querySelector("#editorExport");
 const copyExportBtn = document.querySelector("#editorCopyExport");
-const pigCountEl = document.querySelector("#editorPigCount");
+const boardSizeEl = document.querySelector("#editorBoardSize");
 const selectedInfoEl = document.querySelector("#editorSelectedInfo");
 const validationStateEl = document.querySelector("#editorValidationState");
 const metricsEl = document.querySelector("#editorMetrics");
@@ -66,12 +69,20 @@ async function bootEditor() {
     const data = await loadGameData();
     Object.assign(editorState, data);
     editorState.officialLevels = data.levels.map(normalizeLevel);
-    editorState.levels = loadInitialLevels(editorState.officialLevels);
+    if (isDeadlockDemoMode()) {
+      editorState.demo = true;
+      editorState.source = "demo";
+      editorState.levels = [createDeadlockDemoLevel()];
+      editorState.officialLevels = [createDeadlockDemoLevel()];
+    } else {
+      editorState.levels = loadInitialLevels(editorState.officialLevels);
+    }
     boardEl.style.setProperty("--board-cols", editorState.board.cols);
     boardEl.style.setProperty("--board-rows", editorState.board.rows);
     renderLevelOptions();
-    loadLevel(0);
+    loadLevel(editorState.demo ? 0 : getSavedLevelIndex());
     bindEditorEvents();
+    updateDemoControls();
   } catch (error) {
     statusEl.textContent = `加载失败：${error.message}`;
   }
@@ -113,6 +124,7 @@ function renderLevelOptions() {
 function loadLevel(index) {
   editorState.levelIndex = Math.max(0, Math.min(index, editorState.levels.length - 1));
   levelSelect.value = String(editorState.levelIndex);
+  saveSelectedLevelIndex(editorState.levelIndex);
   const level = editorState.levels[editorState.levelIndex];
   editorState.animals = level.animals.map((animal, animalIndex) => ({
     ...animal,
@@ -120,6 +132,8 @@ function loadLevel(index) {
     active: true,
   }));
   generateCountInput.value = String(editorState.animals.length || Number(generateCountInput.value) || 30);
+  const validation = validateEditorLevelAnimals(editorState.animals, getCurrentPlayArea());
+  generateOpenCountInput.value = String(Number.isFinite(validation.openCount) ? validation.openCount : 3);
   editorState.selectedAnimalId = editorState.animals[0]?.id ?? null;
   if (editorState.selectedAnimalId) {
     editorState.dir = findAnimalById(editorState.selectedAnimalId).dir;
@@ -296,8 +310,7 @@ function updateDragPreview(event) {
   if (!targetCell) {
     target.className = "editor-drag-target is-delete";
     target.textContent = "松手删除";
-    target.style.removeProperty("--x");
-    target.style.removeProperty("--y");
+    clearDragTargetFootprint(target);
     target.style.left = `${Math.min(Math.max(localX, 42), rect.width - 42)}px`;
     target.style.top = `${Math.min(Math.max(localY, 24), rect.height - 24)}px`;
     return;
@@ -308,13 +321,31 @@ function updateDragPreview(event) {
   target.textContent = "";
   target.style.removeProperty("left");
   target.style.removeProperty("top");
-  target.style.setProperty("--x", targetCell.x);
-  target.style.setProperty("--y", targetCell.y);
+  setDragTargetFootprint(target, movedAnimal);
 }
 
 function removeDragPreview() {
   boardEl.querySelector(".editor-drag-preview")?.remove();
   boardEl.querySelector(".editor-drag-target")?.remove();
+}
+
+function setDragTargetFootprint(target, animal) {
+  const cells = getFootprint(animal);
+  const minX = Math.min(...cells.map((cell) => cell.x));
+  const maxX = Math.max(...cells.map((cell) => cell.x));
+  const minY = Math.min(...cells.map((cell) => cell.y));
+  const maxY = Math.max(...cells.map((cell) => cell.y));
+  target.style.setProperty("--target-x", minX);
+  target.style.setProperty("--target-y", minY);
+  target.style.setProperty("--target-cols", maxX - minX + 1);
+  target.style.setProperty("--target-rows", maxY - minY + 1);
+}
+
+function clearDragTargetFootprint(target) {
+  target.style.removeProperty("--target-x");
+  target.style.removeProperty("--target-y");
+  target.style.removeProperty("--target-cols");
+  target.style.removeProperty("--target-rows");
 }
 
 function createAnimalAt(x, y) {
@@ -423,16 +454,15 @@ function renderStats() {
     validation.compactDeadlockCycles.length;
   const statusText = hardRiskCount === 0 ? "通过" : `${hardRiskCount} 项风险`;
 
-  pigCountEl.textContent = `小猪 ${validation.total}`;
+  boardSizeEl.textContent = `${editorState.board.cols}×${editorState.board.rows}`;
   validationStateEl.textContent = statusText;
   validationStateEl.classList.toggle("is-ok", hardRiskCount === 0);
   validationStateEl.classList.toggle("is-danger", hardRiskCount > 0);
 
   const metrics = [
-    ["棋盘", `${editorState.board.cols}×${editorState.board.rows}`],
     ["小猪", validation.total],
-    ["密度", `${density}%`],
     ["可逃", validation.openCount],
+    ["密度", `${density}%`],
     ["最长链", validation.longestChain],
     ["风险", hardRiskCount],
     ["朝向", `上${directionCounts.up} 右${directionCounts.right} 下${directionCounts.down} 左${directionCounts.left}`],
@@ -457,28 +487,38 @@ function renderStats() {
 }
 
 function generateCurrentLevel() {
+  if (editorState.demo) {
+    setTemporaryStatus("示例模式不会生成");
+    return;
+  }
   const targetCount = getRequestedPigCount();
-  const generatedAnimals = generateLevelAnimals(targetCount, getCurrentPlayArea());
+  const targetOpenCount = getRequestedOpenCount(targetCount);
+  const generatedAnimals = generateLevelAnimals(targetCount, getCurrentPlayArea(), targetOpenCount);
   if (!generatedAnimals) {
-    setTemporaryStatus("生成失败，请减少数量");
+    setTemporaryStatus("生成失败，请调整数量或可逃");
     return;
   }
   setCurrentAnimals(generatedAnimals);
   saveCurrentLevelDraft();
   setDirty(true);
   renderEditor();
-  setTemporaryStatus(`本关已生成 ${targetCount} 只`);
+  setTemporaryStatus(`本关已生成 ${targetCount} 只，可逃 ${targetOpenCount}`);
 }
 
 function createNewLevel() {
+  if (editorState.demo) {
+    setTemporaryStatus("示例模式不会新增");
+    return;
+  }
   saveCurrentLevelDraft();
   const nextId = Math.max(0, ...editorState.levels.map((level) => Number(level.id) || 0)) + 1;
   const source = editorState.levels[editorState.levelIndex] ?? {};
   const targetCount = getRequestedPigCount();
+  const targetOpenCount = getRequestedOpenCount(targetCount);
   const area = getDefaultPlayArea();
-  const generatedAnimals = generateLevelAnimals(targetCount, area);
+  const generatedAnimals = generateLevelAnimals(targetCount, area, targetOpenCount);
   if (!generatedAnimals) {
-    setTemporaryStatus("生成失败，请减少数量");
+    setTemporaryStatus("生成失败，请调整数量或可逃");
     return;
   }
   editorState.levels.push({
@@ -491,7 +531,7 @@ function createNewLevel() {
   renderLevelOptions();
   loadLevel(editorState.levels.length - 1);
   setDirty(true);
-  setTemporaryStatus(`已新增 ${targetCount} 只`);
+  setTemporaryStatus(`已新增 ${targetCount} 只，可逃 ${targetOpenCount}`);
 }
 
 function setCurrentAnimals(animals) {
@@ -508,6 +548,10 @@ function setCurrentAnimals(animals) {
 }
 
 function clearCurrentLevel() {
+  if (editorState.demo) {
+    setTemporaryStatus("示例模式不会清空");
+    return;
+  }
   editorState.animals = [];
   editorState.selectedAnimalId = null;
   setDirty(true);
@@ -523,18 +567,27 @@ function getRequestedPigCount() {
   return count;
 }
 
-function generateLevelAnimals(targetCount, area) {
+function getRequestedOpenCount(targetCount) {
+  const fallback = Math.min(3, targetCount);
+  const inputValue = Number(generateOpenCountInput.value);
+  const value = Math.round(Number.isFinite(inputValue) ? inputValue : fallback);
+  const count = Math.max(0, Math.min(value, targetCount));
+  generateOpenCountInput.value = String(count);
+  return count;
+}
+
+function generateLevelAnimals(targetCount, area, targetOpenCount = null) {
   let best = null;
   for (let attempt = 0; attempt < GENERATOR_ATTEMPTS; attempt += 1) {
     const animals = seedGeneratedAnimals(targetCount, area);
     if (animals.length !== targetCount) continue;
-    repairGeneratedAnimals(animals, area);
+    repairGeneratedAnimals(animals, area, targetOpenCount);
     const validation = validateEditorLevelAnimals(animals, area);
-    const score = getGenerationScore(validation, targetCount);
+    const score = getGenerationScore(validation, targetCount, targetOpenCount);
     if (!best || score < best.score) best = { animals: animals.map(stripAnimal), score, validation };
-    if (isGenerationGood(validation, targetCount)) return animals.map(stripAnimal);
+    if (isGenerationGood(validation, targetCount, targetOpenCount)) return animals.map(stripAnimal);
   }
-  if (best && hasNoHardGenerationRisk(best.validation)) return best.animals;
+  if (best && isGenerationGood(best.validation, targetCount, targetOpenCount)) return best.animals;
   return null;
 }
 
@@ -589,8 +642,8 @@ function weightedPickCandidate(candidates, placedCount, targetCount, center, are
   for (let i = 0; i < sampleCount; i += 1) {
     const candidate = candidates[Math.floor(Math.random() * candidates.length)];
     const centerDistance = getNormalizedCenterDistance(candidate, center, area);
-    const centerBias = targetCount >= 55 ? 0.28 : 0.62;
-    const edgeBias = targetCount >= 65 && density > 0.68 ? centerDistance * 0.35 : 0;
+    const centerBias = getGenerationCenterBias(targetCount);
+    const edgeBias = getGenerationEdgeBias(targetCount, density, centerDistance);
     const score = Math.random() + (1 - centerDistance) * centerBias + edgeBias;
     if (score > bestScore) {
       best = candidate;
@@ -600,39 +653,52 @@ function weightedPickCandidate(candidates, placedCount, targetCount, center, are
   return best;
 }
 
+function getGenerationCenterBias(targetCount) {
+  if (targetCount <= 20) return 0.52;
+  if (targetCount <= 28) return 0.44;
+  if (targetCount <= 35) return 0.34;
+  return 0.26;
+}
+
+function getGenerationEdgeBias(targetCount, density, centerDistance) {
+  if (targetCount < 30 || density < 0.55) return 0;
+  const strength = targetCount >= 38 ? 0.18 : 0.1;
+  return centerDistance * strength;
+}
+
 function getNormalizedCenterDistance(candidate, center, area) {
   const dx = (candidate.x + 0.5 - center.x) / Math.max(1, area.cols / 2);
   const dy = (candidate.y + 0.5 - center.y) / Math.max(1, area.rows / 2);
   return Math.min(1, Math.hypot(dx, dy));
 }
 
-function repairGeneratedAnimals(animals, area) {
+function repairGeneratedAnimals(animals, area, targetOpenCount = null) {
   for (let pass = 0; pass < GENERATOR_REPAIR_PASSES; pass += 1) {
     const validation = validateEditorLevelAnimals(animals, area);
-    if (isGenerationGood(validation, animals.length)) return;
+    if (isGenerationGood(validation, animals.length, targetOpenCount)) return;
 
     const riskIds = getGenerationRiskIds(validation);
     if (riskIds.length === 0) {
-      adjustOpenCount(animals, area, validation);
+      adjustOpenCount(animals, area, validation, targetOpenCount);
       continue;
     }
 
     const riskId = riskIds[Math.floor(Math.random() * riskIds.length)];
-    improveGeneratedAnimal(animals, riskId, area, validation);
+    improveGeneratedAnimal(animals, riskId, area, validation, targetOpenCount);
   }
 }
 
-function improveGeneratedAnimal(animals, animalId, area, currentValidation) {
+function improveGeneratedAnimal(animals, animalId, area, currentValidation, targetOpenCount = null) {
   const animal = animals.find((item) => item.id === animalId);
   if (!animal) return false;
-  const currentScore = getGenerationScore(currentValidation, animals.length);
+  const currentScore = getGenerationScore(currentValidation, animals.length, targetOpenCount);
   const options = getLocalGenerationOptions(animal, area).sort(() => Math.random() - 0.5);
 
   for (const option of options) {
     if (!canPlaceInList(option, animals, animal.id, area)) continue;
     const original = { x: animal.x, y: animal.y, dir: animal.dir };
     Object.assign(animal, { x: option.x, y: option.y, dir: option.dir });
-    const score = getGenerationScore(validateEditorLevelAnimals(animals, area), animals.length);
+    const score = getGenerationScore(validateEditorLevelAnimals(animals, area), animals.length, targetOpenCount);
     if (score <= currentScore) return true;
     Object.assign(animal, original);
   }
@@ -655,11 +721,16 @@ function getLocalGenerationOptions(animal, area) {
   return options;
 }
 
-function adjustOpenCount(animals, area, validation) {
-  const range = getTargetOpenRange(animals.length);
-  if (validation.openCount <= range.max) return;
-  const openId = validation.openIds[Math.floor(Math.random() * validation.openIds.length)];
-  improveGeneratedAnimal(animals, openId, area, validation);
+function adjustOpenCount(animals, area, validation, targetOpenCount = null) {
+  const range = getTargetOpenRange(animals.length, targetOpenCount);
+  if (validation.openCount >= range.min && validation.openCount <= range.max) return;
+  const sourceIds =
+    validation.openCount > range.max
+      ? validation.openIds
+      : animals.filter((animal) => !validation.openIds.includes(animal.id)).map((animal) => animal.id);
+  const ids = sourceIds.length ? sourceIds : animals.map((animal) => animal.id);
+  const targetId = ids[Math.floor(Math.random() * ids.length)];
+  improveGeneratedAnimal(animals, targetId, area, validation, targetOpenCount);
 }
 
 function getGenerationRiskIds(validation) {
@@ -680,17 +751,17 @@ function hasNoHardGenerationRisk(validation) {
   );
 }
 
-function isGenerationGood(validation, targetCount) {
+function isGenerationGood(validation, targetCount, targetOpenCount = null) {
   if (!hasNoHardGenerationRisk(validation)) return false;
-  const range = getTargetOpenRange(targetCount);
+  const range = getTargetOpenRange(targetCount, targetOpenCount);
   if (validation.openCount < range.min || validation.openCount > range.max) return false;
   if (targetCount >= 24 && validation.longestChain < 3) return false;
   if (targetCount >= 55 && validation.longestChain < 4) return false;
   return true;
 }
 
-function getGenerationScore(validation, targetCount) {
-  const range = getTargetOpenRange(targetCount);
+function getGenerationScore(validation, targetCount, targetOpenCount = null) {
+  const range = getTargetOpenRange(targetCount, targetOpenCount);
   const hardRisk =
     validation.invalidIds.size +
     validation.overlapIds.size +
@@ -705,7 +776,11 @@ function getGenerationScore(validation, targetCount) {
   return hardRisk * 1000 + openPenalty * 24 + chainPenalty * 18;
 }
 
-function getTargetOpenRange(targetCount) {
+function getTargetOpenRange(targetCount, targetOpenCount = null) {
+  if (Number.isFinite(targetOpenCount)) {
+    const exact = Math.max(0, Math.min(Math.round(targetOpenCount), targetCount));
+    return { min: exact, max: exact };
+  }
   if (targetCount <= 8) return { min: 1, max: Math.max(2, targetCount) };
   return {
     min: Math.max(2, Math.floor(targetCount * 0.04)),
@@ -714,6 +789,7 @@ function getTargetOpenRange(targetCount) {
 }
 
 function saveCurrentLevelDraft() {
+  if (editorState.demo) return;
   const level = editorState.levels[editorState.levelIndex];
   if (!level) return;
   Object.assign(level, {
@@ -724,6 +800,10 @@ function saveCurrentLevelDraft() {
 }
 
 function saveAllDrafts() {
+  if (editorState.demo) {
+    setTemporaryStatus("示例模式不会保存");
+    return;
+  }
   saveCurrentLevelDraft();
   window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(getNormalizedLevels()));
   editorState.source = "draft";
@@ -736,35 +816,73 @@ function loadInitialLevels(fallbackLevels) {
   try {
     const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
     if (!raw) {
-      editorState.source = "template";
-      return createBlankEditorLevels(fallbackLevels);
+      editorState.source = "official";
+      return fallbackLevels.map(normalizeLevel);
     }
     const levels = JSON.parse(raw);
     if (Array.isArray(levels) && levels.length > 0) {
       editorState.source = "draft";
-      return levels.map(normalizeLevel);
+      return mergeDraftWithOfficialLevels(levels, fallbackLevels);
     }
-    editorState.source = "template";
-    return createBlankEditorLevels(fallbackLevels);
+    editorState.source = "official";
+    return fallbackLevels.map(normalizeLevel);
   } catch (error) {
-    editorState.source = "template";
-    return createBlankEditorLevels(fallbackLevels);
+    editorState.source = "official";
+    return fallbackLevels.map(normalizeLevel);
+  }
+}
+
+function mergeDraftWithOfficialLevels(draftLevels, officialLevels) {
+  const mergedLevels = draftLevels.map(normalizeLevel);
+  if (mergedLevels.length >= officialLevels.length) return mergedLevels;
+
+  const draftIds = new Set(mergedLevels.map((level) => level.id));
+  officialLevels.forEach((level, index) => {
+    if (index < mergedLevels.length || draftIds.has(level.id)) return;
+    mergedLevels.push(normalizeLevel(level));
+  });
+  return mergedLevels;
+}
+
+function getSavedLevelIndex() {
+  try {
+    const savedIndex = Number(window.localStorage.getItem(SELECTED_LEVEL_STORAGE_KEY));
+    if (Number.isInteger(savedIndex)) return savedIndex;
+  } catch (error) {
+    // 读取失败时回到第一关。
+  }
+  return 0;
+}
+
+function saveSelectedLevelIndex(index) {
+  try {
+    window.localStorage.setItem(SELECTED_LEVEL_STORAGE_KEY, String(index));
+  } catch (error) {
+    // 关卡位置记忆失败不影响编辑。
   }
 }
 
 function reloadOfficialLevels() {
+  if (editorState.demo) {
+    setTemporaryStatus("示例模式请关闭演示参数");
+    return;
+  }
   if (editorState.dirty && !window.confirm("当前关卡还没保存，确定重载正式关卡吗？")) return;
   window.localStorage.removeItem(DRAFT_STORAGE_KEY);
   window.localStorage.removeItem(DEPLOYED_LEVELS_STORAGE_KEY);
-  editorState.levels = createBlankEditorLevels(editorState.officialLevels);
-  editorState.source = "template";
+  editorState.levels = editorState.officialLevels.map(normalizeLevel);
+  editorState.source = "official";
   renderLevelOptions();
   loadLevel(Math.min(editorState.levelIndex, editorState.levels.length - 1));
-  setTemporaryStatus("已重置为空白 10×16");
+  setTemporaryStatus("已重载正式关卡");
   updateSourceStatus();
 }
 
 function playtestCurrentLevels() {
+  if (editorState.demo) {
+    setTemporaryStatus("示例模式不会试玩");
+    return;
+  }
   saveCurrentLevelDraft();
   const levels = getNormalizedLevels();
   window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(levels));
@@ -773,10 +891,15 @@ function playtestCurrentLevels() {
   setDirty(false);
   setTemporaryStatus("已准备试玩");
   updateSourceStatus();
-  window.open("./index.html?from=level-editor-preview", "_blank");
+  saveSelectedLevelIndex(editorState.levelIndex);
+  window.open(`./index.html?from=level-editor-preview&previewLevel=${editorState.levelIndex + 1}`, "_blank");
 }
 
 async function deployOfficialLevels() {
+  if (editorState.demo) {
+    setTemporaryStatus("示例模式不会部署");
+    return;
+  }
   saveCurrentLevelDraft();
   const levels = getNormalizedLevels();
 
@@ -789,7 +912,7 @@ async function deployOfficialLevels() {
   editorState.levels = levels.map(normalizeLevel);
   editorState.source = "official";
   setDirty(false);
-  setTemporaryStatus("已部署到本机正式版");
+  setTemporaryStatus("已写入 levels.js");
   updateSourceStatus();
 }
 
@@ -806,7 +929,7 @@ async function deployLevelsToLocalFile(levels) {
     }
     return true;
   } catch (error) {
-    setTemporaryStatus("请用关卡编辑器本地服务启动");
+    setTemporaryStatus("部署失败：请用 8033 编辑器地址打开");
     return false;
   }
 }
@@ -851,7 +974,43 @@ function normalizeLevel(level) {
     animalType: level.animalType ?? "pig",
     playArea: normalizePlayArea(level.playArea),
     animals: (level.animals ?? []).map(stripAnimal),
+    ...(Array.isArray(level.starThresholds) ? { starThresholds: level.starThresholds } : {}),
   };
+}
+
+function isDeadlockDemoMode() {
+  return new URLSearchParams(window.location.search).get("demo") === "deadlock";
+}
+
+function createDeadlockDemoLevel() {
+  return normalizeLevel({
+    id: "demo-deadlock",
+    name: "闭环死局示例",
+    animalType: "pig",
+    playArea: getDefaultPlayArea(),
+    animals: [
+      { x: 3, y: 4, dir: "right" },
+      { x: 5, y: 4, dir: "down" },
+      { x: 5, y: 6, dir: "left" },
+      { x: 3, y: 6, dir: "up" },
+    ],
+    starThresholds: [0, 1, 2],
+  });
+}
+
+function updateDemoControls() {
+  if (!editorState.demo) return;
+  [
+    generateCurrentBtn,
+    newLevelBtn,
+    saveDraftBtn,
+    reloadOfficialBtn,
+    playtestBtn,
+    deployOfficialBtn,
+    clearLevelBtn,
+  ].forEach((button) => {
+    button.disabled = true;
+  });
 }
 
 function createBlankEditorLevels(sourceLevels) {
@@ -947,6 +1106,7 @@ function getExportCheck(validation) {
     initialOpenCount: validation.openCount,
     invalidCount: validation.invalidIds.size,
     overlapCount: validation.overlapIds.size,
+    collisionRiskCount: validation.collisionPairs.length,
     opposingRiskCount: validation.collisionPairs.length,
     compactDeadlockCount: validation.compactDeadlockCycles.length,
     longestChain: validation.longestChain,
@@ -1033,7 +1193,8 @@ function updateSourceStatus() {
     draft: "本机草稿",
     official: "本机正式",
     template: "10×16 空白模板",
-  }[editorState.source] ?? "10×16 空白模板";
+    demo: "闭环死局示例",
+  }[editorState.source] ?? "正式关卡";
   sourceStatusEl.textContent = `来源：${sourceText}`;
   sourceStatusEl.classList.toggle("is-draft", editorState.source === "draft");
   sourceStatusEl.classList.toggle("is-deployed", editorState.source !== "draft");

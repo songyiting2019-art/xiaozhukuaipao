@@ -148,7 +148,7 @@
     });
 
     const blockGraph = getImmediateBlockGraph(activeAnimals, area, cellOccupancy, options);
-    const collisionPairs = getOpposingCollisionPairs(activeAnimals, blockGraph);
+    const collisionPairs = getOpposingCollisionPairs(activeAnimals);
     const collisionIds = new Set(collisionPairs.flatMap((pair) => [pair.firstId, pair.secondId]));
     const deadlockCycles = getDeadlockCycles(blockGraph);
     const deadlockIds = new Set(deadlockCycles.flatMap((cycle) => cycle.ids));
@@ -210,21 +210,22 @@
     return null;
   }
 
-  function getOpposingCollisionPairs(animals, blockGraph) {
-    const animalById = new Map(animals.map((animal) => [animal.id, animal]));
+  function getOpposingCollisionPairs(animals) {
+    // Initial-layout rule: scan every row and column for head-facing animals.
+    // This intentionally does not use the immediate blocker graph.
     const pairs = [];
     const seen = new Set();
-    animals.forEach((animal) => {
-      const blockerId = blockGraph.get(animal.id)?.blockerId;
-      if (!blockerId) return;
-      if (blockGraph.get(blockerId)?.blockerId !== animal.id) return;
-      const blocker = animalById.get(blockerId);
-      if (!blocker || !isOpposingLanePair(animal, blocker)) return;
-      const key = [animal.id, blockerId].sort().join("|");
-      if (seen.has(key)) return;
-      seen.add(key);
-      pairs.push({ firstId: animal.id, secondId: blockerId });
-    });
+    for (let firstIndex = 0; firstIndex < animals.length; firstIndex += 1) {
+      for (let secondIndex = firstIndex + 1; secondIndex < animals.length; secondIndex += 1) {
+        const first = animals[firstIndex];
+        const second = animals[secondIndex];
+        if (!isOpposingLanePair(first, second)) continue;
+        const key = [first.id, second.id].sort().join("|");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairs.push({ firstId: first.id, secondId: second.id });
+      }
+    }
     return pairs;
   }
 

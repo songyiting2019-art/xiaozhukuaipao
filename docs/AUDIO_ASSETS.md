@@ -11,15 +11,18 @@
 | `sfx-collection-select-soft-v1.mp3` | 收藏馆选择 | 打开收藏馆、切换分类、选择收藏项、查看解锁提示 | 是 | 高频音效，音量偏轻 |
 | `sfx-pig-tap-tiny-oink-v2b.mp3` | 小猪点选 | 点击小猪准备移动或作为道具目标 | 是 | 采用候选 B；比旧版更短更轻，保留一点小猪感 |
 | `sfx-pig-run-grass-v1.mp3` | 小猪跑动 | 小猪开始跑出牧场或炮仗触发连跑 | 是 | 高频动作音，已节流避免叠加过吵 |
-| `sfx-pig-exit-gate-v1.mp3` | 小猪进门/得分 | 小猪沿路跑到门口节点 | 是 | 触发点已从草坪边缘后移到门口；高频动作音，已节流 |
-| `sfx-pig-hit-dizzy-v1.mp3` | 撞击眩晕 | 小猪撞到阻挡并进入眩晕反馈 | 是 | 撞击点触发 |
-| `sfx-tool-remove-pop-v1.mp3` | 移除道具 | 移除小猪成功 | 是 | 道具低频反馈 |
+| `sfx-pig-skill-lead-charge-v1.mp3` | 带头冲锋猪声 | 带头冲锋真正发动、队伍开始冲出时 | 是 | 采用候选 A“三下号召”；只在技能发动时响一次 |
+| `sfx-pig-skill-side-dash-v1.mp3` | 横冲直撞猪声 | 横冲直撞真正发动、小猪开始侧向冲出时 | 是 | 采用“带头冲锋 B：真实连鼻音”；只在技能发动时响一次 |
+| `sfx-pig-exit-gate-zip-v2c.mp3` | 小猪进门/得分 | 小猪沿路跑到门口节点 | 是 | 采用候选“进门 zip”；高频动作音，已节流 |
+| `sfx-pig-hit-bump-v2.mp3` | 撞击本体 | 小猪撞到阻挡的撞击点 | 是 | 采用碰撞候选 C；先响“弹碰”，随后随机播放小猪哼声 |
+| `sfx-real-pig-grunt-squeal-v1b.mp3` | 撞晕后小猪哼叫 | 小猪进入眩晕状态后随机播放 | 是 | CC0 Freesound；与撞击眩晕音叠加使用 |
+| `sfx-real-pig-double-snort-v1c.mp3` | 撞晕后小猪哼叫 | 小猪进入眩晕状态后随机播放 | 是 | CC0 Freesound；与撞击眩晕音叠加使用 |
+| `sfx-tool-remove-chiu-soft-v5b.mp3` | 移除道具 | 移除小猪成功 | 是 | 采用“柔和三连”；啾啾啾但不刺耳 |
 | `sfx-tool-flip-woosh-v1.mp3` | 翻转道具 | 小猪开始翻转方向 | 是 | 道具低频反馈 |
 | `sfx-tool-stimulant-zap-v1.mp3` | 兴奋剂道具 | 兴奋剂生效、蓄力开始 | 是 | 道具低频反馈 |
 | `sfx-firecracker-pop-v1.mp3` | 炮仗能力 | 炮仗成功点燃、群体逃跑前 | 是 | 重要反馈，峰值已压低 |
-| `sfx-combo-pop-v1.mp3` | 连击加分 | 分数/连击气泡弹出 | 是 | 高频奖励音，已节流 |
 | `sfx-level-complete-stars-v1.mp3` | 通关结算 | 通关弹窗展示星级 | 是 | 结算奖励音 |
-| `sfx-unlock-sparkle-v1.mp3` | 收藏馆解锁展示 | 新道具/能力解锁展示弹层出现 | 是 | 重要奖励音 |
+| `sfx-unlock-bounce-pop-v2.mp3` | 收藏馆解锁展示 | 新道具/能力解锁展示弹层出现 | 是 | 采用候选 C；短触点，像解锁内容弹出来 |
 
 ## 归档记录
 
@@ -29,3 +32,9 @@
 | `sfx-button-tap-soft-v1.mp3` | 通用按钮点击 v1 | `assets/audio/archive/` | 听感像报错提示，后续版本已继续减轻 |
 | `sfx-button-tap-wood-v2.mp3` | 通用按钮点击 v2 | `assets/audio/archive/` | 仍偏重，已由 `sfx-button-tap-light-v3.mp3` 替换 |
 | `sfx-pig-tap-snort-v1.mp3` | 小猪点选 v1 | `assets/audio/archive/` | 鼻音感偏明显，已由 `sfx-pig-tap-tiny-oink-v2b.mp3` 替换 |
+| `sfx-pig-hit-dizzy-v1.mp3` | 撞击眩晕 v1 | `assets/audio/archive/` | 已由更像小猪互撞的 `sfx-pig-hit-bump-v2.mp3` 替换 |
+| `sfx-combo-pop-v1.mp3` | 连击加分 | `assets/audio/archive/` | 用户反馈不需要连击声音，已从游戏触发中移除 |
+| `sfx-pig-exit-gate-v1.mp3` | 小猪进门/得分 v1 | `assets/audio/archive/` | 已由 `sfx-pig-exit-gate-zip-v2c.mp3` 替换 |
+| `sfx-tool-remove-pop-v1.mp3` | 移除道具 v1 | `assets/audio/archive/` | 鼓点感偏重，已由 `sfx-tool-remove-soft-poof-v2.mp3` 替换 |
+| `sfx-tool-remove-soft-poof-v2.mp3` | 移除道具 v2 | `assets/audio/archive/` | 轻烟方向但乐器感不合适，已由 `sfx-tool-remove-chiu-soft-v5b.mp3` 替换 |
+| `sfx-unlock-sparkle-v1.mp3` | 收藏馆解锁展示 v1 | `assets/audio/archive/` | 奖励感偏长，已由短触点 `sfx-unlock-bounce-pop-v2.mp3` 替换 |

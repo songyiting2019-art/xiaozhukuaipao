@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>小猪快跑 - 关卡编辑器</title>
     <link rel="stylesheet" href="./styles.css?v=score-pop-1" />
-    <link rel="stylesheet" href="./level-editor.css?v=board-10x16-1" />
+    <link rel="stylesheet" href="./level-editor.css?v=generation-open-target-1" />
   </head>
   <body class="level-editor-page">
     <main class="editor-shell">
@@ -21,8 +21,13 @@
         </label>
 
         <label class="editor-field editor-count-field">
-          <span>数量</span>
+          <span>小猪</span>
           <input id="editorGenerateCount" type="number" min="1" max="78" step="1" value="30" inputmode="numeric" aria-label="生成小猪数量" />
+        </label>
+
+        <label class="editor-field editor-open-field">
+          <span>可逃</span>
+          <input id="editorGenerateOpenCount" type="number" min="0" max="78" step="1" value="3" inputmode="numeric" aria-label="生成初始可逃数量" />
         </label>
 
         <div class="editor-status" id="editorLevelStatus">未保存</div>
@@ -32,7 +37,7 @@
           <button class="editor-button" id="editorGenerateCurrent" type="button">生成本关</button>
           <button class="editor-button" id="editorNewLevel" type="button">新增关卡</button>
           <button class="editor-button" id="editorSaveDraft" type="button">保存草稿</button>
-          <button class="editor-button" id="editorReloadOfficial" type="button">重置空白</button>
+          <button class="editor-button" id="editorReloadOfficial" type="button">重载正式</button>
           <button class="editor-button" id="editorPlaytest" type="button">试玩</button>
           <button class="editor-button" id="editorDeployOfficial" type="button">部署正式</button>
           <button class="editor-button" id="editorClearLevel" type="button">清空</button>
@@ -51,7 +56,7 @@
           <section class="editor-card">
             <div class="editor-card-head">
               <h2>统计</h2>
-              <span id="editorPigCount">小猪 0</span>
+              <span id="editorBoardSize">10×16</span>
             </div>
             <div class="editor-status-line">
               <strong id="editorValidationState">待检查</strong>
@@ -72,8 +77,8 @@
       </section>
     </main>
 
-    <script src="./board-core.js?v=board-core-2"></script>
-    <script src="./levels.js?v=levels-split-2"></script>
-    <script src="./level-editor.js?v=board-10x16-1"></script>
+    <script src="./board-core.js?v=first-blocker-deadlock-1"></script>
+    <script src="./levels.js?v=levels-50-10x16-1"></script>
+    <script src="./level-editor.js?v=first-blocker-deadlock-1"></script>
   </body>
 </html>

@@ -56,7 +56,7 @@
 
 .editor-topbar {
   display: grid;
-  grid-template-columns: auto minmax(150px, 230px) minmax(64px, 82px) auto auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(150px, 230px) minmax(64px, 82px) minmax(64px, 82px) auto auto minmax(0, 1fr);
   gap: 10px;
   align-items: end;
   padding: 12px;
@@ -473,11 +473,11 @@
 
 .editor-drag-target {
   position: absolute;
-  left: calc(var(--x) * var(--cell));
-  top: calc(var(--y) * var(--cell));
+  left: calc(var(--target-x) * var(--cell));
+  top: calc(var(--target-y) * var(--cell));
   z-index: 205;
-  width: var(--cell);
-  height: var(--cell);
+  width: calc(var(--target-cols) * var(--cell));
+  height: calc(var(--target-rows) * var(--cell));
   border: 3px solid rgba(37, 99, 235, 0.95);
   border-radius: 7px;
   background: rgba(37, 99, 235, 0.18);
@@ -574,7 +574,7 @@
   }
 
   .editor-topbar {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) 72px 72px;
     gap: 8px;
     padding: 10px;
   }
@@ -592,9 +592,20 @@
     grid-column: 2 / 3;
   }
 
+  .editor-open-field {
+    grid-column: 3 / 4;
+  }
+
   .editor-status {
     grid-column: 1 / 2;
     justify-self: start;
+  }
+
+  .editor-source {
+    grid-column: 2 / -1;
+    justify-self: end;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .editor-main {
