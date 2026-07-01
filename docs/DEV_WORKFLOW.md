@@ -110,12 +110,10 @@ DEV_WORKFLOW.md 已更新工具流程规则。下次任务前请读取。
 素材统一放在 `assets/` 下：
 
 - `assets/optimized/`：正式页面正在引用的压缩图。
-- `assets/source/`：可继续编辑的源文件或原始大图。
-- `assets/generated/`：生图初稿，按主题或日期分文件夹。
-- `assets/archive/`：暂时不用但可能有参考价值的旧素材。
-- `assets/temp/`：临时测试素材，任务结束前清理或说明。
+- `assets/audio/`：正式页面正在引用的压缩音频。
+- 候选图、候选音频、原始 wav、生图初稿、旧归档素材和临时预览文件不再提交入库。
 
-正式代码只引用 `assets/optimized/`。其他目录里的素材默认不是线上资源，不能直接接入正式页面。
+正式代码只引用 `assets/optimized/` 和 `assets/audio/` 根目录里的素材。其他目录里的素材默认不是线上资源，任务结束前清理或不要提交。
 
 ### 3. 检查
 
@@ -175,7 +173,7 @@ UI背景线程：8032
 UI预览页：http://127.0.0.1:8032/index.html
 关卡编辑器：http://127.0.0.1:8033/level-editor.html
 关卡编辑器试玩页：http://127.0.0.1:8033/index.html
-音效预览页：http://127.0.0.1:8034/previews/audio-preview.html
+音效线程已归档，当前仓库不再保留音效候选预览页。
 ```
 
 预览端口规则：

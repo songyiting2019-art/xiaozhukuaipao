@@ -1,6 +1,6 @@
 # 音效资产清单
 
-本文件记录已放入 `assets/audio/` 的正式音频资源。候选试听文件保留在 `assets/audio/preview/`，原始 wav 保留在 `assets/audio/source/`。
+本文件记录已放入 `assets/audio/` 的正式音频资源。当前仓库只保留正式运行音频；候选试听、原始 wav 和已废弃旧音效不再提交入库。
 
 | 文件名 | 用途 | 触发时机 | 是否已接入游戏 | 备注 |
 | --- | --- | --- | --- | --- |
@@ -23,18 +23,3 @@
 | `sfx-firecracker-pop-v1.mp3` | 炮仗能力 | 炮仗成功点燃、群体逃跑前 | 是 | 重要反馈，峰值已压低 |
 | `sfx-level-complete-stars-v1.mp3` | 通关结算 | 通关弹窗展示星级 | 是 | 结算奖励音 |
 | `sfx-unlock-bounce-pop-v2.mp3` | 收藏馆解锁展示 | 新道具/能力解锁展示弹层出现 | 是 | 采用候选 C；短触点，像解锁内容弹出来 |
-
-## 归档记录
-
-| 文件名 | 原用途 | 当前位置 | 备注 |
-| --- | --- | --- | --- |
-| `bgm-game-pasture-soft-v1.mp3` | 游戏背景音乐 v1 | `assets/audio/archive/` | 听感偏沉，已由 `bgm-game-pasture-cheer-v2.mp3` 替换 |
-| `sfx-button-tap-soft-v1.mp3` | 通用按钮点击 v1 | `assets/audio/archive/` | 听感像报错提示，后续版本已继续减轻 |
-| `sfx-button-tap-wood-v2.mp3` | 通用按钮点击 v2 | `assets/audio/archive/` | 仍偏重，已由 `sfx-button-tap-light-v3.mp3` 替换 |
-| `sfx-pig-tap-snort-v1.mp3` | 小猪点选 v1 | `assets/audio/archive/` | 鼻音感偏明显，已由 `sfx-pig-tap-tiny-oink-v2b.mp3` 替换 |
-| `sfx-pig-hit-dizzy-v1.mp3` | 撞击眩晕 v1 | `assets/audio/archive/` | 已由更像小猪互撞的 `sfx-pig-hit-bump-v2.mp3` 替换 |
-| `sfx-combo-pop-v1.mp3` | 连击加分 | `assets/audio/archive/` | 用户反馈不需要连击声音，已从游戏触发中移除 |
-| `sfx-pig-exit-gate-v1.mp3` | 小猪进门/得分 v1 | `assets/audio/archive/` | 已由 `sfx-pig-exit-gate-zip-v2c.mp3` 替换 |
-| `sfx-tool-remove-pop-v1.mp3` | 移除道具 v1 | `assets/audio/archive/` | 鼓点感偏重，已由 `sfx-tool-remove-soft-poof-v2.mp3` 替换 |
-| `sfx-tool-remove-soft-poof-v2.mp3` | 移除道具 v2 | `assets/audio/archive/` | 轻烟方向但乐器感不合适，已由 `sfx-tool-remove-chiu-soft-v5b.mp3` 替换 |
-| `sfx-unlock-sparkle-v1.mp3` | 收藏馆解锁展示 v1 | `assets/audio/archive/` | 奖励感偏长，已由短触点 `sfx-unlock-bounce-pop-v2.mp3` 替换 |
