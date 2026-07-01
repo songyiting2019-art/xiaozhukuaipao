@@ -244,12 +244,12 @@ const AUDIO_THROTTLE_MS = {
 };
 const MAX_ACTIVE_SFX = 8;
 
-const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV3Board10x16";
-const FIRECRACKER_POSITION_KEY = "pigEscapeFirecrackerPositionV1";
-const EQUIPPED_SKIN_STORAGE_KEY = "pigEscapeEquippedSkinV3Board10x16";
-const UNLOCKED_COLLECTION_STORAGE_KEY = "pigEscapeUnlockedCollectionV3Board10x16";
-const ENABLED_ABILITIES_STORAGE_KEY = "pigEscapeEnabledAbilitiesV3Board10x16";
-const EQUIPPED_TOOLS_STORAGE_KEY = "pigEscapeEquippedToolsV3Board10x16";
+const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV4FreshStart10x16";
+const FIRECRACKER_POSITION_KEY = "pigEscapeFirecrackerPositionV2FreshStart10x16";
+const EQUIPPED_SKIN_STORAGE_KEY = "pigEscapeEquippedSkinV4FreshStart10x16";
+const UNLOCKED_COLLECTION_STORAGE_KEY = "pigEscapeUnlockedCollectionV4FreshStart10x16";
+const ENABLED_ABILITIES_STORAGE_KEY = "pigEscapeEnabledAbilitiesV4FreshStart10x16";
+const EQUIPPED_TOOLS_STORAGE_KEY = "pigEscapeEquippedToolsV4FreshStart10x16";
 const AUDIO_ENABLED_STORAGE_KEY = "pigEscapeAudioEnabledV1";
 const DEFAULT_LEVEL_INDEX = 0;
 const MAX_EQUIPPED_TOOLS = 3;
