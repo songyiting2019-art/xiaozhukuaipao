@@ -1184,7 +1184,7 @@ body.is-starting .tool-row {
   --sprite-scale-x: 1;
 }
 
-.pig:not(.path-runner):not(.is-dropping):not(.is-running):not(.is-crashing):not(.is-stunned):not(.is-leaving) .pig-shape {
+.pig.is-idle-animated:not(.path-runner):not(.is-dropping):not(.is-running):not(.is-crashing):not(.is-stunned):not(.is-leaving) .pig-shape {
   animation: animal-breathe 1.8s ease-in-out var(--breath-delay, 0s) infinite;
 }
 

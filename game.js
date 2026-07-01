@@ -242,7 +242,8 @@ const AUDIO_THROTTLE_MS = {
   levelCompleteStars: 900,
   unlockSparkle: 360,
 };
-const MAX_ACTIVE_SFX = 8;
+const MAX_ACTIVE_SFX = 5;
+const MOBILE_PERFORMANCE_QUERY = "(hover: none), (pointer: coarse), (max-width: 700px)";
 
 const PROGRESS_STORAGE_KEY = "pigEscapeLevelProgressV4FreshStart10x16";
 const FIRECRACKER_POSITION_KEY = "pigEscapeFirecrackerPositionV2FreshStart10x16";
@@ -385,18 +386,18 @@ const collectionRevealClose = document.querySelector("#collectionRevealClose");
 const closeToolUnlockBtn = document.querySelector("#closeToolUnlockBtn");
 const soundToggleButtons = document.querySelectorAll("[data-sound-toggle]");
 
-const audioBank = createAudioBank();
+const audioBank = {};
 
-function createAudioBank() {
-  return Object.fromEntries(
-    Object.entries(AUDIO_FILES).map(([key, file]) => {
-      const audio = new Audio(`${AUDIO_BASE_PATH}${file}`);
-      audio.preload = key.startsWith("bgm") ? "metadata" : "none";
-      audio.volume = AUDIO_VOLUMES[key] ?? 0.35;
-      audio.loop = key.startsWith("bgm");
-      return [key, audio];
-    }),
-  );
+function getAudioSource(key) {
+  if (audioBank[key]) return audioBank[key];
+  const file = AUDIO_FILES[key];
+  if (!file) return null;
+  const audio = new Audio(`${AUDIO_BASE_PATH}${file}`);
+  audio.preload = "none";
+  audio.volume = AUDIO_VOLUMES[key] ?? 0.35;
+  audio.loop = key.startsWith("bgm");
+  audioBank[key] = audio;
+  return audio;
 }
 
 function loadAudioEnabled() {
@@ -425,7 +426,7 @@ function unlockAudio() {
 function playSound(key, options = {}) {
   if (!state.audioEnabled) return;
   if (!state.audioUnlocked) return;
-  const source = audioBank[key];
+  const source = getAudioSource(key);
   if (!source) return;
   const now = performance.now();
   const throttleMs = options.throttleMs ?? AUDIO_THROTTLE_MS[key] ?? 0;
@@ -474,7 +475,7 @@ function switchBackgroundMusic(key) {
     }
   });
 
-  const nextAudio = audioBank[key];
+  const nextAudio = getAudioSource(key);
   if (!nextAudio) return;
   state.currentBgm = key;
   nextAudio.volume = AUDIO_VOLUMES[key] ?? 0.16;
@@ -617,13 +618,15 @@ function render() {
   renderPlayArea();
   const fragment = document.createDocumentFragment();
   const shouldPlayAnimalDrop = state.shouldPlayAnimalDrop;
+  const activeAnimals = state.animals.filter((animal) => animal.active);
+  const idleAnimationStride = getIdleAnimationStride(activeAnimals.length);
 
-  state.animals
-    .filter((animal) => animal.active)
+  activeAnimals
     .forEach((animal, activeIndex) => {
       const pig = document.createElement("button");
       const animalType = getAnimalType(animal);
       pig.className = `pig ${animalType.className} pig-variant-${animal.variant}${animal.stunned ? " is-stunned" : ""}`;
+      if (activeIndex % idleAnimationStride === 0) pig.classList.add("is-idle-animated");
       pig.type = "button";
       pig.dataset.id = animal.id;
       pig.draggable = false;
@@ -656,6 +659,17 @@ function render() {
       });
     }, 1040);
   }
+}
+
+function isMobilePerformanceMode() {
+  return window.matchMedia?.(MOBILE_PERFORMANCE_QUERY).matches ?? false;
+}
+
+function getIdleAnimationStride(activeCount) {
+  if (!isMobilePerformanceMode()) return 1;
+  if (activeCount > 45) return 4;
+  if (activeCount > 28) return 3;
+  return 2;
 }
 
 function getDecorativeBlackAnimalIndexes(levelIndex, animals) {
@@ -1798,10 +1812,11 @@ function spawnBurst(x, y, animalType, kind) {
 }
 
 function spawnRunTrail(center, dir, cells, animalType, msPerCell = animalType.moveMsPerCell) {
-  const count = Math.max(1, Math.ceil(cells / animalType.trailEveryCells));
+  const trailEveryCells = getTrailEveryCells(animalType);
+  const count = Math.max(1, Math.ceil(cells / trailEveryCells));
   const side = { x: -dir.dy, y: dir.dx };
   for (let index = 0; index < count; index += 1) {
-    const step = Math.min(cells, index * animalType.trailEveryCells);
+    const step = Math.min(cells, index * trailEveryCells);
     const delay = getMoveDuration(animalType, step, msPerCell);
     window.setTimeout(() => {
       const trail = document.createElement("span");
@@ -1818,10 +1833,11 @@ function spawnRunTrail(center, dir, cells, animalType, msPerCell = animalType.mo
 }
 
 function spawnPathRunTrail(center, dir, cells, animalType) {
-  const count = Math.max(1, Math.ceil(cells / animalType.trailEveryCells));
+  const trailEveryCells = getTrailEveryCells(animalType);
+  const count = Math.max(1, Math.ceil(cells / trailEveryCells));
   const side = { x: -dir.dy, y: dir.dx };
   for (let index = 0; index < count; index += 1) {
-    const step = Math.min(cells, index * animalType.trailEveryCells);
+    const step = Math.min(cells, index * trailEveryCells);
     const delay = getMoveDuration(animalType, step);
     window.setTimeout(() => {
       const trail = document.createElement("span");
@@ -1839,6 +1855,10 @@ function spawnPathRunTrail(center, dir, cells, animalType) {
       window.setTimeout(() => trail.remove(), 620);
     }, delay);
   }
+}
+
+function getTrailEveryCells(animalType) {
+  return isMobilePerformanceMode() ? animalType.trailEveryCells * 2.2 : animalType.trailEveryCells;
 }
 
 function getExitTravelCells(animal) {
