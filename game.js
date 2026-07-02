@@ -194,7 +194,6 @@ const AUDIO_FILES = {
   levelCompleteStars: "sfx-level-complete-stars-v1.mp3",
   pigExitGate: "sfx-pig-exit-gate-zip-v2c.mp3",
   pigCrashGruntA: "sfx-real-pig-grunt-squeal-v1b.mp3",
-  pigCrashGruntB: "sfx-real-pig-double-snort-v1c.mp3",
   pigHitDizzy: "sfx-pig-hit-bump-v2.mp3",
   pigRunGrass: "sfx-pig-run-grass-v1.mp3",
   pigSkillLeadCharge: "sfx-pig-skill-lead-charge-v1.mp3",
@@ -215,8 +214,7 @@ const AUDIO_VOLUMES = {
   firecrackerPop: 0.48,
   levelCompleteStars: 0.44,
   pigExitGate: 0.32,
-  pigCrashGruntA: 0.24,
-  pigCrashGruntB: 0.22,
+  pigCrashGruntA: 0.2,
   pigHitDizzy: 0.36,
   pigRunGrass: 0.22,
   pigSkillLeadCharge: 0.24,
@@ -231,8 +229,7 @@ const AUDIO_VOLUMES = {
 const AUDIO_THROTTLE_MS = {
   buttonTap: 46,
   collectionSelect: 70,
-  pigCrashGruntA: 240,
-  pigCrashGruntB: 240,
+  pigCrashGruntA: 260,
   pigExitGate: 140,
   pigHitDizzy: 160,
   pigRunGrass: 180,
@@ -460,11 +457,9 @@ function playSound(key, options = {}) {
 }
 
 function playCrashGrunt() {
-  const crashGrunts = ["pigCrashGruntA", "pigCrashGruntB"];
-  const key = crashGrunts[Math.floor(Math.random() * crashGrunts.length)];
-  playSound(key, {
-    throttleMs: 120,
-    volume: 0.22,
+  playSound("pigCrashGruntA", {
+    throttleMs: 220,
+    volume: 0.2,
   });
 }
 
@@ -1677,6 +1672,9 @@ function crashAnimal(animal, element, blocker, msPerCell = null) {
 
   window.setTimeout(() => {
     playSound("pigHitDizzy");
+    window.setTimeout(() => {
+      playCrashGrunt();
+    }, 70);
     setMotion(element, bumpMs, MOVE_EASING.crashBump);
     setRunOffset(element, dir, bumpCells);
   }, travelMs);
@@ -1690,7 +1688,6 @@ function crashAnimal(animal, element, blocker, msPerCell = null) {
     animal.stunned = true;
     animal.busy = false;
     settleCrashedAnimalElement(animal, element);
-    playCrashGrunt();
 
     window.setTimeout(() => {
       animal.stunned = false;
