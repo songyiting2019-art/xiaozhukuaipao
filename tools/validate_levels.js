@@ -17,6 +17,20 @@ function countMap(value) {
   return Object.keys(value).length;
 }
 
+function getExitScoreForCombo(combo) {
+  if (combo <= 5) return 5;
+  if (combo <= 15) return 10;
+  return 15;
+}
+
+function getPerfectScore(animalCount) {
+  let score = 0;
+  for (let combo = 1; combo <= animalCount; combo += 1) {
+    score += getExitScoreForCombo(combo);
+  }
+  return score;
+}
+
 function canEscape(animals, animal, playArea) {
   const dir = core.DIRS[animal.dir];
   const occupancy = core.buildCellOccupancy(animals, { excludedAnimal: animal });
@@ -104,6 +118,11 @@ if (core && Array.isArray(levels)) {
 
     if (!thresholds || thresholds.length !== 3 || thresholds[0] !== 0 || thresholds[1] >= thresholds[2]) {
       issues.push(`Level ${level.id}: starThresholds should be [0, twoStar, threeStar].`);
+    } else {
+      const perfectScore = getPerfectScore(level.animals.length);
+      if (thresholds[2] > perfectScore) {
+        issues.push(`Level ${level.id}: three-star threshold ${thresholds[2]} exceeds perfect score ${perfectScore}.`);
+      }
     }
 
     if (level.playArea.cols !== 10 || level.playArea.rows !== 16) {

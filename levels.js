@@ -138,8 +138,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      60,
-      80
+      175,
+      225
     ]
   },
   {
@@ -306,8 +306,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      85,
-      120
+      225,
+      300
     ]
   },
   {
@@ -499,8 +499,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      125,
-      170
+      275,
+      350
     ]
   },
   {
@@ -717,8 +717,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      160,
-      225
+      350,
+      425
     ]
   },
   {
@@ -960,8 +960,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      200,
-      275
+      400,
+      500
     ]
   },
   {
@@ -1203,8 +1203,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      215,
-      300
+      425,
+      525
     ]
   },
   {
@@ -1446,8 +1446,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      235,
-      325
+      425,
+      525
     ]
   },
   {
@@ -1689,8 +1689,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      255,
-      355
+      425,
+      525
     ]
   },
   {
@@ -1932,8 +1932,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      275,
-      380
+      425,
+      525
     ]
   },
   {
@@ -2175,8 +2175,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      290,
-      405
+      425,
+      525
     ]
   },
   {
@@ -2443,8 +2443,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      310,
-      430
+      475,
+      600
     ]
   },
   {
@@ -2711,8 +2711,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      330,
-      455
+      475,
+      600
     ]
   },
   {
@@ -2979,8 +2979,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      340,
-      470
+      475,
+      600
     ]
   },
   {
@@ -3247,8 +3247,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      345,
-      480
+      475,
+      600
     ]
   },
   {
@@ -3515,8 +3515,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      355,
-      495
+      475,
+      600
     ]
   },
   {
@@ -3783,8 +3783,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      365,
-      510
+      475,
+      600
     ]
   },
   {
@@ -4051,8 +4051,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      375,
-      525
+      475,
+      600
     ]
   },
   {
@@ -4319,8 +4319,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      385,
-      540
+      475,
+      600
     ]
   },
   {
@@ -4587,8 +4587,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      395,
-      555
+      475,
+      600
     ]
   },
   {
@@ -4855,8 +4855,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      405,
-      570
+      475,
+      600
     ]
   },
   {
@@ -5148,8 +5148,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      415,
-      585
+      550,
+      675
     ]
   },
   {
@@ -5441,8 +5441,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      425,
-      600
+      550,
+      675
     ]
   },
   {
@@ -5734,8 +5734,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      435,
-      615
+      550,
+      675
     ]
   },
   {
@@ -6027,8 +6027,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      445,
-      630
+      550,
+      675
     ]
   },
   {
@@ -6320,8 +6320,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      455,
-      645
+      550,
+      675
     ]
   },
   {
@@ -6613,8 +6613,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      465,
-      660
+      550,
+      675
     ]
   },
   {
@@ -6906,7 +6906,7 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      475,
+      550,
       675
     ]
   },
@@ -7199,8 +7199,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      485,
-      690
+      550,
+      675
     ]
   },
   {
@@ -7492,8 +7492,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      495,
-      705
+      550,
+      675
     ]
   },
   {
@@ -7785,8 +7785,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      505,
-      720
+      550,
+      675
     ]
   },
   {
@@ -8103,8 +8103,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      515,
-      735
+      600,
+      750
     ]
   },
   {
@@ -8421,7 +8421,7 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      525,
+      600,
       750
     ]
   },
@@ -8739,8 +8739,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      535,
-      765
+      600,
+      750
     ]
   },
   {
@@ -9057,8 +9057,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      545,
-      780
+      600,
+      750
     ]
   },
   {
@@ -9375,8 +9375,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      555,
-      795
+      600,
+      750
     ]
   },
   {
@@ -9693,8 +9693,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      565,
-      810
+      625,
+      750
     ]
   },
   {
@@ -10011,8 +10011,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      575,
-      825
+      625,
+      750
     ]
   },
   {
@@ -10329,8 +10329,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      585,
-      840
+      625,
+      750
     ]
   },
   {
@@ -10647,8 +10647,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      595,
-      855
+      625,
+      750
     ]
   },
   {
@@ -10965,8 +10965,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      605,
-      870
+      625,
+      750
     ]
   },
   {
@@ -11283,8 +11283,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      615,
-      885
+      625,
+      750
     ]
   },
   {
@@ -11602,7 +11602,7 @@ window.PIG_ESCAPE_LEVELS = [
     "starThresholds": [
       0,
       625,
-      900
+      750
     ]
   },
   {
@@ -11919,8 +11919,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      635,
-      915
+      625,
+      750
     ]
   },
   {
@@ -12237,8 +12237,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      645,
-      930
+      625,
+      750
     ]
   },
   {
@@ -12555,8 +12555,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      655,
-      945
+      625,
+      750
     ]
   },
   {
@@ -12873,8 +12873,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      665,
-      960
+      625,
+      750
     ]
   },
   {
@@ -13191,8 +13191,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      675,
-      975
+      625,
+      750
     ]
   },
   {
@@ -13509,8 +13509,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      685,
-      990
+      625,
+      750
     ]
   },
   {
@@ -13827,8 +13827,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      695,
-      1005
+      625,
+      750
     ]
   },
   {
@@ -14145,8 +14145,8 @@ window.PIG_ESCAPE_LEVELS = [
     ],
     "starThresholds": [
       0,
-      705,
-      1020
+      625,
+      750
     ]
   }
 ];
