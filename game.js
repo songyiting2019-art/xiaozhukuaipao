@@ -178,6 +178,10 @@ const STIMULANT_CRASH_MULTIPLIER = 0.62;
 const FIRECRACKER_START_DELAY_MS = 260;
 const FIRECRACKER_CHAIN_GAP_MS = 64;
 const FIRECRACKER_MOVE_MULTIPLIER = 0.68;
+const MAX_ACTIVE_TRAILS = 30;
+const MAX_ACTIVE_TRAILS_MOBILE = 10;
+const MOBILE_SCORE_POP_THROTTLE_MS = 110;
+const MOBILE_SCORE_BUMP_THROTTLE_MS = 140;
 
 const AUDIO_BASE_PATH = "./assets/audio/";
 const AUDIO_FILES = {
@@ -329,6 +333,10 @@ const state = {
   lastAudioAt: {},
   activeSfxCount: 0,
   levelCompleteSoundPlayed: false,
+  activeExitAnimations: 0,
+  activeTrailEffects: 0,
+  lastScorePopAt: 0,
+  lastScoreBumpAt: 0,
 };
 
 const PIG_MARKUP = `
@@ -575,6 +583,10 @@ function initLevel(index = 0) {
   state.toolMode = null;
   state.firecrackerRunning = false;
   state.levelCompleteSoundPlayed = false;
+  state.activeExitAnimations = 0;
+  state.activeTrailEffects = 0;
+  state.lastScorePopAt = 0;
+  state.lastScoreBumpAt = 0;
   state.toolUses = {
     remove: 0,
     flip: 0,
@@ -670,6 +682,10 @@ function getIdleAnimationStride(activeCount) {
   if (activeCount > 45) return 4;
   if (activeCount > 28) return 3;
   return 2;
+}
+
+function isReducedExitEffectsMode() {
+  return isMobilePerformanceMode() && state.activeExitAnimations > 1;
 }
 
 function getDecorativeBlackAnimalIndexes(levelIndex, animals) {
@@ -1306,6 +1322,7 @@ function exitAnimal(animal, element, msPerCell = null) {
   const moveMs = getMoveDuration(animalType, cellsToEntry, msPerCell ?? animalType.moveMsPerCell);
   const runToken = state.runToken;
 
+  state.activeExitAnimations += 1;
   setMotion(element, moveMs, MOVE_EASING.run);
   setRunOffset(element, dir, cellsToEntry);
   element.classList.remove("is-dropping");
@@ -1317,10 +1334,13 @@ function exitAnimal(animal, element, msPerCell = null) {
   animal.active = false;
   state.cleared += 1;
   addExitScore(center);
-  updateHud();
+  updateHud({ full: false });
 
   window.setTimeout(() => {
-    if (runToken !== state.runToken) return;
+    if (runToken !== state.runToken) {
+      releaseExitAnimation();
+      return;
+    }
     const runner = createPathRunner(element, pathEntry, animal.dir);
     element.remove();
     runPathToGate(runner, pathEntry, animal.dir, animalType, runToken);
@@ -1463,7 +1483,10 @@ async function runPathToGate(runner, start, dirKey, animalType, runToken) {
   let current = route[0];
 
   for (let index = 1; index < route.length; index += 1) {
-    if (runToken !== state.runToken || !runner.isConnected) return;
+    if (runToken !== state.runToken || !runner.isConnected) {
+      releaseExitAnimation();
+      return;
+    }
     const next = route[index];
     await movePathRunner(runner, current, next, animalType, index);
     current = next;
@@ -1475,13 +1498,21 @@ async function runPathToGate(runner, start, dirKey, animalType, runToken) {
     }
   }
 
-  if (runToken !== state.runToken || !runner.isConnected) return;
+  if (runToken !== state.runToken || !runner.isConnected) {
+    releaseExitAnimation();
+    return;
+  }
   runner.classList.add("is-path-disappearing");
   window.setTimeout(() => {
+    releaseExitAnimation();
     if (runToken !== state.runToken) return;
     runner.remove();
     checkLevelComplete();
   }, PATH_EXIT.fadeMs);
+}
+
+function releaseExitAnimation() {
+  state.activeExitAnimations = Math.max(0, state.activeExitAnimations - 1);
 }
 
 async function movePathRunner(runner, from, to, animalType, segmentIndex = 1) {
@@ -1812,6 +1843,7 @@ function spawnBurst(x, y, animalType, kind) {
 }
 
 function spawnRunTrail(center, dir, cells, animalType, msPerCell = animalType.moveMsPerCell) {
+  if (isReducedExitEffectsMode() && state.activeExitAnimations > 2) return;
   const trailEveryCells = getTrailEveryCells(animalType);
   const count = Math.max(1, Math.ceil(cells / trailEveryCells));
   const side = { x: -dir.dy, y: dir.dx };
@@ -1819,6 +1851,7 @@ function spawnRunTrail(center, dir, cells, animalType, msPerCell = animalType.mo
     const step = Math.min(cells, index * trailEveryCells);
     const delay = getMoveDuration(animalType, step, msPerCell);
     window.setTimeout(() => {
+      if (!reserveTrailEffect()) return;
       const trail = document.createElement("span");
       const sideOffset = index % 2 === 0 ? -0.16 : 0.16;
       trail.className = "effect-trail";
@@ -1827,12 +1860,16 @@ function spawnRunTrail(center, dir, cells, animalType, msPerCell = animalType.mo
       trail.style.setProperty("--trail-color", animalType.trailColor);
       trail.style.setProperty("--dust-scale", index % 3 === 0 ? "0.52" : "0.38");
       pasture.appendChild(trail);
-      window.setTimeout(() => trail.remove(), 520);
+      window.setTimeout(() => {
+        trail.remove();
+        releaseTrailEffect();
+      }, 520);
     }, delay);
   }
 }
 
 function spawnPathRunTrail(center, dir, cells, animalType) {
+  if (isReducedExitEffectsMode() && state.activeExitAnimations > 1) return;
   const trailEveryCells = getTrailEveryCells(animalType);
   const count = Math.max(1, Math.ceil(cells / trailEveryCells));
   const side = { x: -dir.dy, y: dir.dx };
@@ -1840,6 +1877,7 @@ function spawnPathRunTrail(center, dir, cells, animalType) {
     const step = Math.min(cells, index * trailEveryCells);
     const delay = getMoveDuration(animalType, step);
     window.setTimeout(() => {
+      if (!reserveTrailEffect()) return;
       const trail = document.createElement("span");
       const sideOffset = index % 2 === 0 ? -0.18 : 0.18;
       const point = getPastureScreenPoint({
@@ -1852,13 +1890,28 @@ function spawnPathRunTrail(center, dir, cells, animalType) {
       trail.style.setProperty("--trail-color", animalType.trailColor);
       trail.style.setProperty("--dust-scale", index % 3 === 0 ? "0.5" : "0.36");
       document.body.appendChild(trail);
-      window.setTimeout(() => trail.remove(), 620);
+      window.setTimeout(() => {
+        trail.remove();
+        releaseTrailEffect();
+      }, 620);
     }, delay);
   }
 }
 
 function getTrailEveryCells(animalType) {
-  return isMobilePerformanceMode() ? animalType.trailEveryCells * 2.2 : animalType.trailEveryCells;
+  if (!isMobilePerformanceMode()) return animalType.trailEveryCells;
+  return animalType.trailEveryCells * (isReducedExitEffectsMode() ? 4.4 : 2.2);
+}
+
+function reserveTrailEffect() {
+  const limit = isMobilePerformanceMode() ? MAX_ACTIVE_TRAILS_MOBILE : MAX_ACTIVE_TRAILS;
+  if (state.activeTrailEffects >= limit) return false;
+  state.activeTrailEffects += 1;
+  return true;
+}
+
+function releaseTrailEffect() {
+  state.activeTrailEffects = Math.max(0, state.activeTrailEffects - 1);
 }
 
 function getExitTravelCells(animal) {
@@ -1924,9 +1977,10 @@ function setRunOffset(element, dir, cells) {
   element.style.setProperty("--run-y", `calc(${dir.dy * cells} * var(--cell))`);
 }
 
-function updateHud() {
+function updateHud({ full = true } = {}) {
   clearedCount.textContent = state.cleared;
   scoreCount.textContent = state.score;
+  if (!full) return;
   starTarget.textContent = `3★${formatScoreShort(state.starThresholds[2])}`;
   totalStarsCount.textContent = getTotalStars();
   renderUnlockHints();
@@ -1987,6 +2041,10 @@ function resetCombo() {
 
 function showComboBurst(combo, gainedScore = getExitScoreForCombo(combo), scorePoint = null) {
   const burstToken = state.scoreBurstToken + 1;
+  const now = performance.now();
+  const shouldAnimate = !isMobilePerformanceMode()
+    || state.activeExitAnimations <= 1
+    || now - state.lastScorePopAt >= MOBILE_SCORE_POP_THROTTLE_MS;
   state.scoreBurstToken = burstToken;
   if (scorePoint) {
     comboBurst.style.setProperty("--score-x", scorePoint.x);
@@ -2000,9 +2058,12 @@ function showComboBurst(combo, gainedScore = getExitScoreForCombo(combo), scoreP
   comboBurst.classList.toggle("is-blazing", combo >= 16);
   comboBurst.classList.toggle("is-inferno", combo >= 30);
   comboBurst.classList.remove("is-breaking");
-  comboBurst.classList.remove("is-popping");
-  void comboBurst.offsetWidth;
-  comboBurst.classList.add("is-popping");
+  if (shouldAnimate) {
+    state.lastScorePopAt = now;
+    comboBurst.classList.remove("is-popping");
+    void comboBurst.offsetWidth;
+    comboBurst.classList.add("is-popping");
+  }
   window.setTimeout(() => {
     if (state.scoreBurstToken === burstToken) {
       hideComboBurst();
@@ -2011,6 +2072,15 @@ function showComboBurst(combo, gainedScore = getExitScoreForCombo(combo), scoreP
 }
 
 function bumpScorePill() {
+  const now = performance.now();
+  if (
+    isMobilePerformanceMode()
+    && state.activeExitAnimations > 1
+    && now - state.lastScoreBumpAt < MOBILE_SCORE_BUMP_THROTTLE_MS
+  ) {
+    return;
+  }
+  state.lastScoreBumpAt = now;
   scorePill.classList.remove("is-bumping");
   void scorePill.offsetWidth;
   scorePill.classList.add("is-bumping");
